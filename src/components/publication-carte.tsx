@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supprimerPublication } from "@/app/actions/publications";
 import { BoutonLike } from "@/components/bouton-like";
+import {
+  SectionCommentaires,
+  type CommentaireAffiche,
+} from "@/components/section-commentaires";
 
 type Props = {
   id: string;
@@ -13,8 +17,10 @@ type Props = {
   auteurNom: string;
   auteurPseudo: string;
   estMienne: boolean;
+  connecte: boolean;
   nombreLikes: number;
   dejaLike: boolean;
+  commentaires: CommentaireAffiche[];
 };
 
 export function PublicationCarte({
@@ -24,15 +30,19 @@ export function PublicationCarte({
   auteurNom,
   auteurPseudo,
   estMienne,
+  connecte,
   nombreLikes,
   dejaLike,
+  commentaires,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [commentairesOuverts, setCommentairesOuverts] = useState(false);
 
   function handleDelete() {
     setMessage(null);
+
     startTransition(async () => {
       const result = await supprimerPublication(id);
       if (result.error) {
@@ -56,7 +66,17 @@ export function PublicationCarte({
       <p className="mt-3 whitespace-pre-wrap">{contenu}</p>
 
       <div className="mt-3 flex items-center justify-between gap-4">
-        <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
+        <div className="flex items-center gap-3">
+          <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
+
+          <button
+            type="button"
+            onClick={() => setCommentairesOuverts(!commentairesOuverts)}
+            className="rounded-xl border border-border px-3 py-1 text-sm font-semibold hover:bg-surface"
+          >
+            Commentaires ({commentaires.length})
+          </button>
+        </div>
 
         {estMienne && (
           <button
@@ -74,6 +94,10 @@ export function PublicationCarte({
         <p role="alert" className="mt-2 text-sm text-red-600">
           {message}
         </p>
+      )}
+
+      {commentairesOuverts && (
+        <SectionCommentaires postId={id} commentaires={commentaires} connecte={connecte} />
       )}
     </article>
   );
