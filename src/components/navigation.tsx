@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Compass, Home, Mail, Search, User } from "lucide-react";
+import {
+  Bell,
+  Bookmark,
+  Compass,
+  Home,
+  Mail,
+  Search,
+  Settings,
+  User,
+  UserPlus,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "./logo";
 
@@ -10,15 +20,20 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  mobile: boolean;
 };
 
+// mobile : affiché aussi dans la barre du bas sur téléphone (6 entrées maximum).
 const items: NavItem[] = [
-  { href: "/", label: "Pour toi", icon: Home },
-  { href: "/explorer", label: "Explorer", icon: Compass },
-  { href: "/recherche", label: "Recherche", icon: Search },
-  { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/messages", label: "Messages", icon: Mail },
-  { href: "/profil", label: "Profil", icon: User },
+  { href: "/", label: "Pour toi", icon: Home, mobile: true },
+  { href: "/explorer", label: "Explorer", icon: Compass, mobile: false },
+  { href: "/recherche", label: "Recherche", icon: Search, mobile: true },
+  { href: "/notifications", label: "Notifications", icon: Bell, mobile: true },
+  { href: "/messages", label: "Messages", icon: Mail, mobile: true },
+  { href: "/demandes", label: "Demandes", icon: UserPlus, mobile: false },
+  { href: "/favoris", label: "Favoris", icon: Bookmark, mobile: false },
+  { href: "/profil", label: "Profil", icon: User, mobile: true },
+  { href: "/parametres", label: "Paramètres", icon: Settings, mobile: true },
 ];
 
 type NavLinkProps = {
@@ -47,7 +62,7 @@ function NavLink({ item, variant }: NavLinkProps) {
       aria-current={active ? "page" : undefined}
       className={`${layout} ${state} transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
     >
-      <Icon size={variant === "side" ? 22 : 22} aria-hidden="true" />
+      <Icon size={22} aria-hidden="true" />
       <span className="truncate">{item.label}</span>
     </Link>
   );
@@ -74,9 +89,11 @@ export function BottomNav() {
       aria-label="Navigation principale"
       className="fixed inset-x-0 bottom-0 z-50 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      {items.map((item) => (
-        <NavLink key={item.href} item={item} variant="bottom" />
-      ))}
+      {items
+        .filter((item) => item.mobile)
+        .map((item) => (
+          <NavLink key={item.href} item={item} variant="bottom" />
+        ))}
     </nav>
   );
 }
