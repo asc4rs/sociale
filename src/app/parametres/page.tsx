@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { FormulaireParametres } from "@/components/formulaire-parametres";
+import { SectionCompte } from "@/components/section-compte";
 
 export default function ParametresPage() {
   return (
@@ -25,7 +26,7 @@ async function ContenuParametres() {
 
   const { data: moi } = await supabase
     .from("profiles")
-    .select("is_private, notif_follow, notif_like, notif_comment, notif_repost, notif_message")
+    .select("is_private, is_admin, notif_follow, notif_like, notif_comment, notif_repost, notif_message")
     .eq("id", user.id)
     .single();
 
@@ -56,6 +57,8 @@ async function ContenuParametres() {
           };
         })}
       />
+
+      <SectionCompte estAdmin={moi?.is_admin ?? false} />
     </div>
   );
 }

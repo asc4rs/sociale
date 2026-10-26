@@ -1,27 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   Bookmark,
   Compass,
-  HelpCircle,
   Home,
-  Info,
-  LogOut,
   Mail,
-  Palette,
   Search,
   Settings,
-  Shield,
-  Trash2,
   User,
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { Logo } from "./logo";
 
 type NavItem = {
@@ -29,11 +21,9 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   mobile: boolean;
-  admin?: boolean;
 };
 
 // mobile : affiché aussi dans la barre du bas sur téléphone.
-// admin : affiché uniquement pour les comptes modérateurs.
 const items: NavItem[] = [
   { href: "/", label: "Pour toi", icon: Home, mobile: true },
   { href: "/explorer", label: "Explorer", icon: Compass, mobile: false },
@@ -44,37 +34,7 @@ const items: NavItem[] = [
   { href: "/favoris", label: "Favoris", icon: Bookmark, mobile: false },
   { href: "/profil", label: "Profil", icon: User, mobile: true },
   { href: "/parametres", label: "Paramètres", icon: Settings, mobile: true },
-  { href: "/affichage", label: "Affichage", icon: Palette, mobile: false },
-  { href: "/aide", label: "Aide", icon: HelpCircle, mobile: false },
-  { href: "/a-propos", label: "À propos", icon: Info, mobile: false },
-  { href: "/moderation", label: "Modération", icon: Shield, mobile: false, admin: true },
-  { href: "/supprimer-compte", label: "Supprimer mon compte", icon: Trash2, mobile: false },
 ];
-
-function useEstAdmin() {
-  const [estAdmin, setEstAdmin] = useState(false);
-
-  useEffect(() => {
-    async function charger() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      setEstAdmin(!!data?.is_admin);
-    }
-    charger();
-  }, []);
-
-  return estAdmin;
-}
 
 type NavLinkProps = {
   item: NavItem;
@@ -89,7 +49,7 @@ function NavLink({ item, variant }: NavLinkProps) {
 
   const layout =
     variant === "side"
-      ? "flex items-center gap-3 rounded-xl px-3 py-2 text-base"
+      ? "flex items-center gap-3 rounded-xl px-3 py-2.5 text-base"
       : "flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-2 text-[10px]";
 
   const state = active
@@ -108,51 +68,17 @@ function NavLink({ item, variant }: NavLinkProps) {
   );
 }
 
-function BoutonDeconnexion() {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  function handleClick() {
-    startTransition(async () => {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/connexion");
-      router.refresh();
-    });
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={pending}
-      className="flex items-center gap-3 rounded-xl px-3 py-2 text-base text-muted transition-colors hover:text-foreground disabled:opacity-50"
-    >
-      <LogOut size={22} aria-hidden="true" />
-      <span>{pending ? "Déconnexion..." : "Se déconnecter"}</span>
-    </button>
-  );
-}
-
 export function SidebarNav() {
-  const estAdmin = useEstAdmin();
-  const visibles = items.filter((item) => !item.admin || estAdmin);
-
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-border p-4 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border p-4 md:flex">
       <div className="px-3 py-4">
         <Logo />
       </div>
-
-      <nav aria-label="Navigation principale" className="mt-2 flex flex-col gap-1">
-        {visibles.map((item) => (
+      <nav aria-label="Navigation principale" className="mt-4 flex flex-col gap-1">
+        {items.map((item) => (
           <NavLink key={item.href} item={item} variant="side" />
         ))}
       </nav>
-
-      <div className="mt-auto pt-4">
-        <BoutonDeconnexion />
-      </div>
     </aside>
   );
 }
