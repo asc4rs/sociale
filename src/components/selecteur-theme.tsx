@@ -12,11 +12,15 @@ const OPTIONS: { valeur: Choix; libelle: string }[] = [
   { valeur: "sombre", libelle: "Sombre" },
 ];
 
+// Le CSS attend "light" ou "dark" : on traduit le choix ici.
 function appliquer(choix: Choix) {
+  const racine = document.documentElement;
   if (choix === "systeme") {
-    document.documentElement.removeAttribute("data-theme");
+    racine.removeAttribute("data-theme");
+  } else if (choix === "clair") {
+    racine.setAttribute("data-theme", "light");
   } else {
-    document.documentElement.setAttribute("data-theme", choix);
+    racine.setAttribute("data-theme", "dark");
   }
 }
 
