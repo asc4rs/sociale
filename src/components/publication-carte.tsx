@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supprimerPublication } from "@/app/actions/publications";
 import { BoutonLike } from "@/components/bouton-like";
+import { BoutonsPublication } from "@/components/boutons-publication";
 import {
   SectionCommentaires,
   type CommentaireAffiche,
@@ -21,6 +22,10 @@ type Props = {
   nombreLikes: number;
   dejaLike: boolean;
   commentaires: CommentaireAffiche[];
+  nombreReposts: number;
+  dejaRepost: boolean;
+  dejaFavori: boolean;
+  estEpinglee: boolean;
 };
 
 export function PublicationCarte({
@@ -34,6 +39,10 @@ export function PublicationCarte({
   nombreLikes,
   dejaLike,
   commentaires,
+  nombreReposts,
+  dejaRepost,
+  dejaFavori,
+  estEpinglee,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -42,7 +51,6 @@ export function PublicationCarte({
 
   function handleDelete() {
     setMessage(null);
-
     startTransition(async () => {
       const result = await supprimerPublication(id);
       if (result.error) {
@@ -59,7 +67,10 @@ export function PublicationCarte({
         <Link href={`/u/${auteurPseudo}`} className="font-semibold hover:underline">
           {auteurNom}
         </Link>
-        <span className="text-xs text-muted">{date}</span>
+        <span className="text-xs text-muted">
+          {estEpinglee && "Épinglée · "}
+          {date}
+        </span>
       </div>
       <p className="text-sm text-muted">@{auteurPseudo}</p>
 
@@ -89,6 +100,16 @@ export function PublicationCarte({
           </button>
         )}
       </div>
+
+      <BoutonsPublication
+        postId={id}
+        nombreReposts={nombreReposts}
+        dejaRepost={dejaRepost}
+        dejaFavori={dejaFavori}
+        estEpinglee={estEpinglee}
+        estMienne={estMienne}
+        connecte={connecte}
+      />
 
       {message && (
         <p role="alert" className="mt-2 text-sm text-red-600">
