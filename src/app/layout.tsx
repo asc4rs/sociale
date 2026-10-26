@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { BottomNav, SidebarNav } from "@/components/navigation";
 
@@ -23,9 +24,13 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="min-h-screen md:flex">
-        <SidebarNav />
+        <Suspense fallback={null}>
+          <SidebarNav />
+        </Suspense>
         <main className="flex-1 pb-24 md:pb-0">{children}</main>
-        <BottomNav />
+        <Suspense fallback={null}>
+          <BottomNav />
+        </Suspense>
       </body>
     </html>
   );
