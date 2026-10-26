@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { BoutonSuivre } from "@/components/bouton-suivre";
 
 export default function ProfilPublicPage({
   params,
@@ -67,6 +68,8 @@ async function ContenuProfil({
           Modifier mon profil
         </Link>
       )}
+
+      {user && !estMonProfil && <BoutonSuivre cibleId={profile.id} />}
 
       {profile.is_private && !estMonProfil && (
         <p className="mt-6 rounded-xl border border-border p-4 text-sm">
