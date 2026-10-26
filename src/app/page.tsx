@@ -13,6 +13,7 @@ type Publication = {
     | { username: string; display_name: string }
     | { username: string; display_name: string }[]
     | null;
+  likes: { user_id: string }[] | null;
 };
 
 export default function AccueilPage() {
@@ -32,10 +33,12 @@ async function ContenuAccueil() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // La base ne renvoie que les publications autorisées par les règles de sécurité.
+  // La base ne renvoie que les publications et likes autorisés par les règles de sécurité.
   const { data } = await supabase
     .from("posts")
-    .select("id, content, created_at, author_id, profiles!posts_author_id_fkey(username, display_name)")
+    .select(
+      "id, content, created_at, author_id, profiles!posts_author_id_fkey(username, display_name), likes(user_id)",
+    )
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -56,6 +59,7 @@ async function ContenuAccueil() {
 
         {publications.map((p) => {
           const auteur = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+          const likes = p.likes ?? [];
           const date = new Date(p.created_at).toLocaleString("fr-FR", {
             dateStyle: "short",
             timeStyle: "short",
@@ -70,6 +74,8 @@ async function ContenuAccueil() {
                 auteurNom={auteur?.display_name ?? "Compte inconnu"}
                 auteurPseudo={auteur?.username ?? "inconnu"}
                 estMienne={user?.id === p.author_id}
+                nombreLikes={likes.length}
+                dejaLike={likes.some((l) => l.user_id === user?.id)}
               />
             </li>
           );

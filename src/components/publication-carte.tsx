@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supprimerPublication } from "@/app/actions/publications";
+import { BoutonLike } from "@/components/bouton-like";
 
 type Props = {
   id: string;
@@ -12,6 +13,8 @@ type Props = {
   auteurNom: string;
   auteurPseudo: string;
   estMienne: boolean;
+  nombreLikes: number;
+  dejaLike: boolean;
 };
 
 export function PublicationCarte({
@@ -21,6 +24,8 @@ export function PublicationCarte({
   auteurNom,
   auteurPseudo,
   estMienne,
+  nombreLikes,
+  dejaLike,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -50,16 +55,20 @@ export function PublicationCarte({
 
       <p className="mt-3 whitespace-pre-wrap">{contenu}</p>
 
-      {estMienne && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={pending}
-          className="mt-3 text-sm text-red-600 hover:underline disabled:opacity-50"
-        >
-          {pending ? "Suppression..." : "Supprimer"}
-        </button>
-      )}
+      <div className="mt-3 flex items-center justify-between gap-4">
+        <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
+
+        {estMienne && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={pending}
+            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+          >
+            {pending ? "Suppression..." : "Supprimer"}
+          </button>
+        )}
+      </div>
 
       {message && (
         <p role="alert" className="mt-2 text-sm text-red-600">
