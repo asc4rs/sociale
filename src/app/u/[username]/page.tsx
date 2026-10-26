@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { BoutonSuivre } from "@/components/bouton-suivre";
+import { BoutonBloquer } from "@/components/bouton-bloquer";
 
 export default function ProfilPublicPage({
   params,
@@ -42,6 +43,17 @@ async function ContenuProfil({
 
   const estMonProfil = user?.id === profile.id;
 
+  let estBloque = false;
+  if (user && !estMonProfil) {
+    const { data: blocage } = await supabase
+      .from("blocks")
+      .select("blocked_id")
+      .eq("blocker_id", user.id)
+      .eq("blocked_id", profile.id)
+      .maybeSingle();
+    estBloque = !!blocage;
+  }
+
   const inscrit = new Date(profile.created_at).toLocaleDateString("fr-FR", {
     month: "long",
     year: "numeric",
@@ -69,7 +81,9 @@ async function ContenuProfil({
         </Link>
       )}
 
-      {user && !estMonProfil && <BoutonSuivre cibleId={profile.id} />}
+      {user && !estMonProfil && !estBloque && <BoutonSuivre cibleId={profile.id} />}
+
+      {user && !estMonProfil && <BoutonBloquer cibleId={profile.id} estBloque={estBloque} />}
 
       {profile.is_private && !estMonProfil && (
         <p className="mt-6 rounded-xl border border-border p-4 text-sm">

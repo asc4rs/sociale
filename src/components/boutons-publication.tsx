@@ -7,6 +7,7 @@ import {
   basculerFavori,
   basculerRepublication,
 } from "@/app/actions/interactions";
+import { BoutonSignaler } from "@/components/bouton-signaler";
 
 type Resultat = { error?: string; ok?: boolean };
 
@@ -80,6 +81,8 @@ export function BoutonsPublication({
           {estEpinglee ? "Désépingler" : "Épingler"}
         </button>
       )}
+
+      {!estMienne && <BoutonSignaler postId={postId} libelle="Signaler" />}
 
       {message && (
         <span role="alert" className="text-sm text-red-600">
