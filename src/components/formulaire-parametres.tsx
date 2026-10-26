@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   debloquer,
@@ -149,13 +148,6 @@ export function FormulaireParametres({ estPrive, preferences, bloques }: Props) 
             ))}
           </ul>
         )}
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold">Modération</h2>
-        <Link href="/moderation" className="mt-3 inline-block text-sm underline">
-          Voir les signalements (réservé aux modérateurs)
-        </Link>
       </section>
 
       {message && (
