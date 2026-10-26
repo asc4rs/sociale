@@ -10,8 +10,9 @@
   --accent-foreground: #ffffff;
 }
 
+/* Thème système : sombre si Windows est en sombre, sauf si l'utilisateur a choisi « clair ». */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #fafafa;
     --muted: #a3a3a3;
@@ -20,6 +21,17 @@
     --accent: #fafafa;
     --accent-foreground: #0a0a0a;
   }
+}
+
+/* Choix manuel « sombre ». */
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --muted: #a3a3a3;
+  --surface: #171717;
+  --border: #262626;
+  --accent: #fafafa;
+  --accent-foreground: #0a0a0a;
 }
 
 @theme inline {
