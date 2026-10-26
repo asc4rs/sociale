@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+/* Thème clair : valeurs par défaut. */
+:root,
+:root[data-theme="light"] {
   --background: #ffffff;
   --foreground: #0a0a0a;
   --muted: #737373;
@@ -8,11 +10,12 @@
   --border: #e5e5e5;
   --accent: #0a0a0a;
   --accent-foreground: #ffffff;
+  color-scheme: light;
 }
 
-/* Thème système : sombre si Windows est en sombre, sauf si l'utilisateur a choisi « clair ». */
+/* Thème système : sombre seulement si Windows est en sombre ET qu'aucun choix manuel n'est fait. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]) {
     --background: #0a0a0a;
     --foreground: #fafafa;
     --muted: #a3a3a3;
@@ -20,6 +23,7 @@
     --border: #262626;
     --accent: #fafafa;
     --accent-foreground: #0a0a0a;
+    color-scheme: dark;
   }
 }
 
@@ -32,6 +36,7 @@
   --border: #262626;
   --accent: #fafafa;
   --accent-foreground: #0a0a0a;
+  color-scheme: dark;
 }
 
 @theme inline {
