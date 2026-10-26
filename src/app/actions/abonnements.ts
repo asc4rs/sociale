@@ -81,3 +81,63 @@ export async function seDesabonner(cibleId: string) {
   if (cible) revalidatePath(`/u/${cible.username}`);
   return { ok: true };
 }
+// Liste les demandes en attente reçues par le compte connecté.
+export async function getDemandesRecues() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("follows")
+    .select("follower_id, created_at, profiles!follows_follower_id_fkey(username, display_name)")
+    .eq("following_id", user.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  return data ?? [];
+}
+
+// Accepte une demande : le statut passe de "pending" à "accepted".
+export async function accepterDemande(followerId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Tu dois être connecté." };
+
+  const { error } = await supabase
+    .from("follows")
+    .update({ status: "accepted" })
+    .eq("follower_id", followerId)
+    .eq("following_id", user.id);
+
+  if (error) return { error: "Impossible d'accepter cette demande." };
+
+  revalidatePath("/demandes");
+  return { ok: true };
+}
+
+// Refuse une demande : la ligne est supprimée.
+export async function refuserDemande(followerId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Tu dois être connecté." };
+
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("following_id", user.id);
+
+  if (error) return { error: "Impossible de refuser cette demande." };
+
+  revalidatePath("/demandes");
+  return { ok: true };
+}
