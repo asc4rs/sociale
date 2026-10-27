@@ -11,6 +11,7 @@ export function BoutonToutLire() {
   function handleClick() {
     startTransition(async () => {
       await marquerToutesLues();
+      window.dispatchEvent(new Event("notifications-lues"));
       router.refresh();
     });
   }

@@ -14,6 +14,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { CompteurNotifications } from "@/components/compteur-notifications";
 import { Logo } from "./logo";
 
 type NavItem = {
@@ -21,14 +22,16 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   mobile: boolean;
+  compteur?: boolean;
 };
 
 // mobile : affiché aussi dans la barre du bas sur téléphone.
+// compteur : affiche la pastille des notifications non lues.
 const items: NavItem[] = [
   { href: "/", label: "Pour toi", icon: Home, mobile: true },
   { href: "/explorer", label: "Explorer", icon: Compass, mobile: false },
   { href: "/recherche", label: "Recherche", icon: Search, mobile: true },
-  { href: "/notifications", label: "Notifications", icon: Bell, mobile: true },
+  { href: "/notifications", label: "Notifications", icon: Bell, mobile: true, compteur: true },
   { href: "/messages", label: "Messages", icon: Mail, mobile: true },
   { href: "/demandes", label: "Demandes", icon: UserPlus, mobile: false },
   { href: "/favoris", label: "Favoris", icon: Bookmark, mobile: false },
@@ -62,7 +65,10 @@ function NavLink({ item, variant }: NavLinkProps) {
       aria-current={active ? "page" : undefined}
       className={`${layout} ${state} transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
     >
-      <Icon size={22} aria-hidden="true" />
+      <span className="relative flex">
+        <Icon size={22} aria-hidden="true" />
+        {item.compteur && <CompteurNotifications />}
+      </span>
       <span className="truncate">{item.label}</span>
     </Link>
   );
