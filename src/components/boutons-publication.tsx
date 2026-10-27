@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Bookmark, Pin, PinOff, Repeat2 } from "lucide-react";
 import {
   basculerEpingle,
   basculerFavori,
@@ -22,7 +23,8 @@ type Props = {
 };
 
 const boutonClasse =
-  "rounded-xl border border-border px-3 py-1 text-sm font-semibold hover:bg-surface disabled:opacity-50";
+  "flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface disabled:opacity-50";
+const boutonActif = "bg-accent text-accent-foreground hover:bg-accent";
 
 export function BoutonsPublication({
   postId,
@@ -57,18 +59,23 @@ export function BoutonsPublication({
         type="button"
         disabled={pending}
         onClick={() => lancer(() => basculerRepublication(postId, dejaRepost))}
-        className={boutonClasse}
+        aria-label={dejaRepost ? "Annuler la republication" : "Republier"}
+        title={dejaRepost ? "Annuler la republication" : "Republier"}
+        className={`${boutonClasse} ${dejaRepost ? boutonActif : ""}`}
       >
-        {dejaRepost ? "Annuler la republication" : "Republier"} ({nombreReposts})
+        <Repeat2 size={16} aria-hidden="true" />
+        <span className="font-semibold">{nombreReposts}</span>
       </button>
 
       <button
         type="button"
         disabled={pending}
         onClick={() => lancer(() => basculerFavori(postId, dejaFavori))}
-        className={boutonClasse}
+        aria-label={dejaFavori ? "Retirer des favoris" : "Enregistrer"}
+        title={dejaFavori ? "Retirer des favoris" : "Enregistrer"}
+        className={`${boutonClasse} ${dejaFavori ? boutonActif : ""}`}
       >
-        {dejaFavori ? "Retirer des favoris" : "Enregistrer"}
+        <Bookmark size={16} aria-hidden="true" fill={dejaFavori ? "currentColor" : "none"} />
       </button>
 
       {estMienne && (
@@ -76,13 +83,15 @@ export function BoutonsPublication({
           type="button"
           disabled={pending}
           onClick={() => lancer(() => basculerEpingle(postId, estEpinglee))}
-          className={boutonClasse}
+          aria-label={estEpinglee ? "Désépingler" : "Épingler"}
+          title={estEpinglee ? "Désépingler" : "Épingler"}
+          className={`${boutonClasse} ${estEpinglee ? boutonActif : ""}`}
         >
-          {estEpinglee ? "Désépingler" : "Épingler"}
+          {estEpinglee ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
         </button>
       )}
 
-      {!estMienne && <BoutonSignaler postId={postId} libelle="Signaler" />}
+      {!estMienne && <BoutonSignaler postId={postId} libelle="Signaler" icone />}
 
       {message && (
         <span role="alert" className="text-sm text-red-600">

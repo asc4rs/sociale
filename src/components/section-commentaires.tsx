@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { ajouterCommentaire, supprimerCommentaire } from "@/app/actions/commentaires";
 
 export type CommentaireAffiche = {
@@ -18,13 +19,21 @@ type Props = {
   postId: string;
   commentaires: CommentaireAffiche[];
   connecte: boolean;
+  cible?: string | null;
 };
 
-export function SectionCommentaires({ postId, commentaires, connecte }: Props) {
+export function SectionCommentaires({ postId, commentaires, connecte, cible = null }: Props) {
   const router = useRouter();
   const [texte, setTexte] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Si on arrive depuis une notification, on fait défiler jusqu'au commentaire visé.
+  useEffect(() => {
+    if (!cible) return;
+    const element = document.getElementById(`commentaire-${cible}`);
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [cible]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,7 +98,11 @@ export function SectionCommentaires({ postId, commentaires, connecte }: Props) {
         )}
 
         {commentaires.map((c) => (
-          <li key={c.id} className="text-sm">
+          <li
+            key={c.id}
+            id={`commentaire-${c.id}`}
+            className={`rounded-lg p-2 text-sm ${cible === c.id ? "ring-2 ring-accent" : ""}`}
+          >
             <div className="flex items-baseline justify-between gap-2">
               <Link href={`/u/${c.auteurPseudo}`} className="font-semibold hover:underline">
                 {c.auteurNom}
@@ -103,9 +116,11 @@ export function SectionCommentaires({ postId, commentaires, connecte }: Props) {
                 type="button"
                 onClick={() => handleDelete(c.id)}
                 disabled={pending}
-                className="mt-1 text-xs text-red-600 hover:underline disabled:opacity-50"
+                aria-label="Supprimer le commentaire"
+                title="Supprimer"
+                className="mt-1 rounded-lg p-1 text-red-600 hover:bg-surface disabled:opacity-50"
               >
-                Supprimer
+                <Trash2 size={14} aria-hidden="true" />
               </button>
             )}
           </li>

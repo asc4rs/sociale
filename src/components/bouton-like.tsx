@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Heart } from "lucide-react";
 import { basculerLike } from "@/app/actions/likes";
 
 type Props = {
@@ -20,14 +21,12 @@ export function BoutonLike({ postId, nombreInitial, dejaLikeInitial }: Props) {
     const ancienNombre = nombre;
     const ancienEtat = dejaLike;
 
-    // Mise à jour immédiate : le bouton réagit avant la réponse de la base.
     setDejaLike(!ancienEtat);
     setNombre(ancienEtat ? ancienNombre - 1 : ancienNombre + 1);
 
     startTransition(async () => {
       const result = await basculerLike(postId, ancienEtat);
       if (result.error) {
-        // En cas d'échec, on revient à l'état précédent.
         setDejaLike(ancienEtat);
         setNombre(ancienNombre);
         setMessage(result.error);
@@ -43,11 +42,13 @@ export function BoutonLike({ postId, nombreInitial, dejaLikeInitial }: Props) {
         disabled={pending}
         aria-pressed={dejaLike}
         aria-label={dejaLike ? "Retirer le like" : "Aimer cette publication"}
-        className={`rounded-xl border border-border px-3 py-1 text-sm font-semibold transition-colors disabled:opacity-50 ${
+        title={dejaLike ? "Retirer le like" : "J'aime"}
+        className={`flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors disabled:opacity-50 ${
           dejaLike ? "bg-accent text-accent-foreground" : "hover:bg-surface"
         }`}
       >
-        ♥ {nombre}
+        <Heart size={16} aria-hidden="true" fill={dejaLike ? "currentColor" : "none"} />
+        <span className="font-semibold">{nombre}</span>
       </button>
       {message && (
         <span role="alert" className="text-sm text-red-600">

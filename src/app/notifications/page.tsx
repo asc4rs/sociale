@@ -12,6 +12,8 @@ type Notification = {
   type: string;
   read: boolean;
   created_at: string;
+  post_id: string | null;
+  comment_id: string | null;
   actor: Acteur | Acteur[] | null;
 };
 
@@ -25,10 +27,14 @@ const TEXTES: Record<string, string> = {
   message: "t'a envoyé un message",
 };
 
-function lienPour(type: string, pseudo: string) {
-  if (type === "follow") return `/u/${pseudo}`;
-  if (type === "follow_request") return "/demandes";
-  if (type === "message") return "/messages";
+function lienPour(n: Notification, pseudo: string) {
+  if (n.type === "follow") return `/u/${pseudo}`;
+  if (n.type === "follow_request") return "/demandes";
+  if (n.type === "message") return "/messages";
+  if (n.post_id) {
+    const base = `/publication/${n.post_id}`;
+    return n.comment_id ? `${base}?commentaire=${n.comment_id}` : base;
+  }
   return "/";
 }
 
@@ -53,7 +59,9 @@ async function ContenuNotifications() {
 
   const { data } = await supabase
     .from("notifications")
-    .select("id, type, read, created_at, actor:profiles!notifications_actor_id_fkey(username, display_name)")
+    .select(
+      "id, type, read, created_at, post_id, comment_id, actor:profiles!notifications_actor_id_fkey(username, display_name)",
+    )
     .eq("recipient_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -82,7 +90,7 @@ async function ContenuNotifications() {
             return (
               <li key={n.id}>
                 <Link
-                  href={lienPour(n.type, pseudo)}
+                  href={lienPour(n, pseudo)}
                   className={`block rounded-xl border border-border p-4 hover:bg-surface ${
                     n.read ? "" : "font-semibold"
                   }`}
