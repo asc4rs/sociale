@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { BottomNav, SidebarNav } from "@/components/navigation";
+import {
+  BarreMobile,
+  BottomNav,
+  SidebarNav,
+} from "@/components/navigation";
+import { BarreRetour } from "@/components/barre-retour";
 import { EnregistrerServiceWorker } from "@/components/enregistrer-sw";
 
 export const metadata: Metadata = {
@@ -34,7 +39,15 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <SidebarNav />
         </Suspense>
-        <main className="flex-1 pb-24 md:pb-0">{children}</main>
+        <main className="flex-1 pt-14 pb-24 md:pt-0 md:pb-0">
+          <Suspense fallback={null}>
+            <BarreRetour />
+          </Suspense>
+          {children}
+        </main>
+        <Suspense fallback={null}>
+          <BarreMobile />
+        </Suspense>
         <Suspense fallback={null}>
           <BottomNav />
         </Suspense>

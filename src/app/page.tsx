@@ -81,7 +81,7 @@ async function ContenuAccueil() {
 
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
-      <h1 className="text-3xl font-bold">Pour toi</h1>
+      <h1 className="text-3xl font-bold">Accueil</h1>
 
       <div className="mt-6">
         <Composer />
