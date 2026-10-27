@@ -42,14 +42,29 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublic = PUBLIC_PATHS.some((path) =>
-    request.nextUrl.pathname.startsWith(path),
-  );
+  const pathname = request.nextUrl.pathname;
+
+  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/connexion";
     return NextResponse.redirect(url);
+  }
+
+  // /profil envoie vers mon profil public.
+  if (user && pathname === "/profil") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/u/${profile.username}`;
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
