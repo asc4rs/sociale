@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Pin, PinOff, Repeat2 } from "lucide-react";
 import {
@@ -8,7 +8,6 @@ import {
   basculerFavori,
   basculerRepublication,
 } from "@/app/actions/interactions";
-import { BoutonSignaler } from "@/components/bouton-signaler";
 
 type Resultat = { error?: string; ok?: boolean };
 
@@ -26,6 +25,7 @@ const boutonClasse =
   "flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface disabled:opacity-50";
 const boutonActif = "bg-accent text-accent-foreground hover:bg-accent";
 
+// Boutons placés dans la barre d'actions de la publication, à gauche.
 export function BoutonsPublication({
   postId,
   nombreReposts,
@@ -37,24 +37,19 @@ export function BoutonsPublication({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
 
   if (!connecte) return null;
 
   function lancer(action: () => Promise<Resultat>) {
-    setMessage(null);
     startTransition(async () => {
       const result = await action();
-      if (result.error) {
-        setMessage(result.error);
-        return;
-      }
+      if (result.error) return;
       router.refresh();
     });
   }
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
+    <>
       <button
         type="button"
         disabled={pending}
@@ -90,14 +85,6 @@ export function BoutonsPublication({
           {estEpinglee ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
         </button>
       )}
-
-      {!estMienne && <BoutonSignaler postId={postId} libelle="Signaler" icone />}
-
-      {message && (
-        <span role="alert" className="text-sm text-red-600">
-          {message}
-        </span>
-      )}
-    </div>
+    </>
   );
 }

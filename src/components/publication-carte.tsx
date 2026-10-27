@@ -7,6 +7,7 @@ import { MessageCircle, Trash2 } from "lucide-react";
 import { supprimerPublication } from "@/app/actions/publications";
 import { BoutonLike } from "@/components/bouton-like";
 import { BoutonsPublication } from "@/components/boutons-publication";
+import { BoutonSignaler } from "@/components/bouton-signaler";
 import {
   SectionCommentaires,
   type CommentaireAffiche,
@@ -49,17 +50,12 @@ export function PublicationCarte({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
   const [commentairesOuverts, setCommentairesOuverts] = useState(!!commentaireCible);
 
   function handleDelete() {
-    setMessage(null);
     startTransition(async () => {
       const result = await supprimerPublication(id);
-      if (result.error) {
-        setMessage(result.error);
-        return;
-      }
+      if (result.error) return;
       router.refresh();
     });
   }
@@ -79,21 +75,35 @@ export function PublicationCarte({
 
       <p className="mt-3 whitespace-pre-wrap">{contenu}</p>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {connecte && (
           <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
+        )}
 
-          <button
-            type="button"
-            onClick={() => setCommentairesOuverts(!commentairesOuverts)}
-            aria-label={`Commentaires (${commentaires.length})`}
-            title="Commentaires"
-            className="flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface"
-          >
-            <MessageCircle size={16} aria-hidden="true" />
-            <span className="font-semibold">{commentaires.length}</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setCommentairesOuverts(!commentairesOuverts)}
+          aria-label={`Commentaires (${commentaires.length})`}
+          title="Commentaires"
+          className="flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface"
+        >
+          <MessageCircle size={16} aria-hidden="true" />
+          <span className="font-semibold">{commentaires.length}</span>
+        </button>
+
+        <BoutonsPublication
+          postId={id}
+          nombreReposts={nombreReposts}
+          dejaRepost={dejaRepost}
+          dejaFavori={dejaFavori}
+          estEpinglee={estEpinglee}
+          estMienne={estMienne}
+          connecte={connecte}
+        />
+
+        {!estMienne && connecte && (
+          <BoutonSignaler postId={id} libelle="Signaler" icone />
+        )}
 
         {estMienne && (
           <button
@@ -102,28 +112,12 @@ export function PublicationCarte({
             disabled={pending}
             aria-label="Supprimer la publication"
             title="Supprimer"
-            className="rounded-xl p-1.5 text-red-600 hover:bg-surface disabled:opacity-50"
+            className="ml-auto rounded-xl p-1.5 text-red-600 hover:bg-surface disabled:opacity-50"
           >
             <Trash2 size={18} aria-hidden="true" />
           </button>
         )}
       </div>
-
-      <BoutonsPublication
-        postId={id}
-        nombreReposts={nombreReposts}
-        dejaRepost={dejaRepost}
-        dejaFavori={dejaFavori}
-        estEpinglee={estEpinglee}
-        estMienne={estMienne}
-        connecte={connecte}
-      />
-
-      {message && (
-        <p role="alert" className="mt-2 text-sm text-red-600">
-          {message}
-        </p>
-      )}
 
       {commentairesOuverts && (
         <SectionCommentaires
