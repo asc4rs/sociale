@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Fichiers techniques : toujours accessibles, sans vérification de session.
+const FICHIERS_PUBLICS = ["/sw.js", "/manifest.webmanifest", "/pwa-192", "/pwa-512"];
+
 // Pages accessibles sans être connecté.
 const PUBLIC_PATHS = [
   "/connexion",
@@ -12,6 +15,7 @@ const PUBLIC_PATHS = [
   "/a-propos",
   "/conditions",
   "/confidentialite",
+  "/hors-ligne",
 ];
 
 function redirigerVers(request: NextRequest, chemin: string) {
@@ -22,6 +26,12 @@ function redirigerVers(request: NextRequest, chemin: string) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (FICHIERS_PUBLICS.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -49,7 +59,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!user) {

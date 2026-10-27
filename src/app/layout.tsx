@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { BottomNav, SidebarNav } from "@/components/navigation";
+import { EnregistrerServiceWorker } from "@/components/enregistrer-sw";
 
 export const metadata: Metadata = {
   title: {
@@ -9,6 +10,11 @@ export const metadata: Metadata = {
     template: "%s · Sociale",
   },
   description: "Sociale, un réseau social simple, rapide et responsive.",
+  appleWebApp: {
+    capable: true,
+    title: "Sociale",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -24,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="min-h-screen md:flex">
+        <EnregistrerServiceWorker />
         <Suspense fallback={null}>
           <SidebarNav />
         </Suspense>
