@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Thème clair : valeurs par défaut. */
 :root,
 :root[data-theme="light"] {
   --background: #ffffff;
@@ -13,7 +12,6 @@
   color-scheme: light;
 }
 
-/* Thème système : sombre seulement si Windows est en sombre ET qu'aucun choix manuel n'est fait. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --background: #0a0a0a;
@@ -27,7 +25,6 @@
   }
 }
 
-/* Choix manuel « sombre ». */
 :root[data-theme="dark"] {
   --background: #0a0a0a;
   --foreground: #fafafa;
@@ -39,18 +36,22 @@
   color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+.bg-background { background-color: var(--background); }
+.bg-surface { background-color: var(--surface); }
+.bg-accent { background-color: var(--accent); }
+.text-foreground { color: var(--foreground); }
+.text-muted { color: var(--muted); }
+.text-accent-foreground { color: var(--accent-foreground); }
+.border-border { border-color: var(--border); }
+.border-accent { border-color: var(--accent); }
+.outline-accent { outline-color: var(--accent); }
+.hover\:bg-surface:hover { background-color: var(--surface); }
+.hover\:text-foreground:hover { color: var(--foreground); }
+.focus\:border-accent:focus { border-color: var(--accent); }
+.focus-visible\:outline-accent:focus-visible { outline-color: var(--accent); }
