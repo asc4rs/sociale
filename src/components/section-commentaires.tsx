@@ -101,28 +101,36 @@ export function SectionCommentaires({ postId, commentaires, connecte, cible = nu
           <li
             key={c.id}
             id={`commentaire-${c.id}`}
-            className={`rounded-lg p-2 text-sm ${cible === c.id ? "ring-2 ring-accent" : ""}`}
+            className={`rounded-xl border border-border p-3 text-sm ${
+              cible === c.id ? "ring-2 ring-accent" : ""
+            }`}
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <Link href={`/u/${c.auteurPseudo}`} className="font-semibold hover:underline">
-                {c.auteurNom}
-              </Link>
-              <span className="text-xs text-muted">{c.date}</span>
-            </div>
-            <p className="mt-1 whitespace-pre-wrap">{c.contenu}</p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <Link href={`/u/${c.auteurPseudo}`} className="font-semibold hover:underline">
+                    {c.auteurNom}
+                  </Link>
+                  <span className="text-xs text-muted">@{c.auteurPseudo}</span>
+                </div>
+                <span className="text-xs text-muted">{c.date}</span>
+              </div>
 
-            {c.estMien && (
-              <button
-                type="button"
-                onClick={() => handleDelete(c.id)}
-                disabled={pending}
-                aria-label="Supprimer le commentaire"
-                title="Supprimer"
-                className="mt-1 rounded-lg p-1 text-red-600 hover:bg-surface disabled:opacity-50"
-              >
-                <Trash2 size={14} aria-hidden="true" />
-              </button>
-            )}
+              {c.estMien && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(c.id)}
+                  disabled={pending}
+                  aria-label="Supprimer le commentaire"
+                  title="Supprimer"
+                  className="shrink-0 rounded-lg p-1 text-red-600 hover:bg-surface disabled:opacity-50"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            <p className="mt-2 whitespace-pre-wrap">{c.contenu}</p>
           </li>
         ))}
       </ul>
