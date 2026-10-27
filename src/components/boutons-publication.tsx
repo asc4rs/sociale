@@ -22,10 +22,9 @@ type Props = {
 };
 
 const boutonClasse =
-  "flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface disabled:opacity-50";
+  "flex shrink-0 items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface disabled:opacity-50";
 const boutonActif = "bg-accent text-accent-foreground hover:bg-accent";
 
-// Boutons placés dans la barre d'actions de la publication, à gauche.
 export function BoutonsPublication({
   postId,
   nombreReposts,

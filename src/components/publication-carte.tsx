@@ -75,7 +75,7 @@ export function PublicationCarte({
 
       <p className="mt-3 whitespace-pre-wrap">{contenu}</p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-nowrap items-center gap-2">
         {connecte && (
           <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
         )}
@@ -85,7 +85,7 @@ export function PublicationCarte({
           onClick={() => setCommentairesOuverts(!commentairesOuverts)}
           aria-label={`Commentaires (${commentaires.length})`}
           title="Commentaires"
-          className="flex items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface"
+          className="flex shrink-0 items-center gap-1 rounded-xl border border-border px-2.5 py-1 text-sm transition-colors hover:bg-surface"
         >
           <MessageCircle size={16} aria-hidden="true" />
           <span className="font-semibold">{commentaires.length}</span>
@@ -112,7 +112,7 @@ export function PublicationCarte({
             disabled={pending}
             aria-label="Supprimer la publication"
             title="Supprimer"
-            className="ml-auto rounded-xl p-1.5 text-red-600 hover:bg-surface disabled:opacity-50"
+            className="ml-auto shrink-0 rounded-xl p-1.5 text-red-600 hover:bg-surface disabled:opacity-50"
           >
             <Trash2 size={18} aria-hidden="true" />
           </button>
