@@ -2,7 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Pages accessibles sans être connecté.
-const PUBLIC_PATHS = ["/connexion", "/inscription", "/auth/callback"];
+const PUBLIC_PATHS = [
+  "/connexion",
+  "/inscription",
+  "/auth/callback",
+  "/mot-de-passe-oublie",
+  "/reinitialiser-mot-de-passe",
+  "/aide",
+  "/a-propos",
+  "/conditions",
+  "/confidentialite",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -28,7 +38,6 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // getUser vérifie la session auprès de Supabase, contrairement à getSession.
   const {
     data: { user },
   } = await supabase.auth.getUser();

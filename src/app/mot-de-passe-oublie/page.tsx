@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,27 +9,37 @@ const inputClass =
 
 export default function MotDePasseOubliePage() {
   const [email, setEmail] = useState("");
+  const [envoi, setEnvoi] = useState(false);
   const [envoye, setEnvoye] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
-    startTransition(async () => {
+    const adresse = email.trim();
+    if (adresse.length === 0) {
+      setMessage("Saisis ton adresse e-mail.");
+      return;
+    }
+
+    setEnvoi(true);
+    try {
       const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error } = await supabase.auth.resetPasswordForEmail(adresse, {
         redirectTo: `${window.location.origin}/auth/callback?next=/reinitialiser-mot-de-passe`,
       });
 
       if (error) {
-        setMessage("Envoi impossible. Réessaie dans quelques minutes.");
-        return;
+        setMessage(`Envoi impossible : ${error.message}`);
+      } else {
+        setEnvoye(true);
       }
-      // Même message, que le compte existe ou non : on ne révèle rien.
-      setEnvoye(true);
-    });
+    } catch (e) {
+      setMessage(`Erreur inattendue : ${e instanceof Error ? e.message : "inconnue"}`);
+    } finally {
+      setEnvoi(false);
+    }
   }
 
   if (envoye) {
@@ -51,7 +61,7 @@ export default function MotDePasseOubliePage() {
       <h1 className="text-3xl font-bold">Mot de passe oublié</h1>
       <p className="mt-2 text-muted">Indique ton adresse e-mail, nous t&apos;enverrons un lien.</p>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4" noValidate>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Adresse e-mail</span>
           <input
@@ -60,7 +70,6 @@ export default function MotDePasseOubliePage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            required
           />
         </label>
 
@@ -72,10 +81,10 @@ export default function MotDePasseOubliePage() {
 
         <button
           type="submit"
-          disabled={pending || email.trim().length === 0}
+          disabled={envoi}
           className="rounded-xl bg-accent px-4 py-3 font-semibold text-accent-foreground disabled:opacity-50"
         >
-          {pending ? "Envoi..." : "Envoyer le lien"}
+          {envoi ? "Envoi en cours..." : "Envoyer le lien"}
         </button>
       </form>
 
