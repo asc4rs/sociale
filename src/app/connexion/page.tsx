@@ -68,6 +68,10 @@ export default function ConnexionPage() {
           />
         </label>
 
+        <Link href="/mot-de-passe-oublie" className="text-right text-sm underline">
+          Mot de passe oublié ?
+        </Link>
+
         {error && (
           <p role="alert" className="text-sm text-red-600">
             {error}

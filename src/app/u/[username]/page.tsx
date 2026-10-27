@@ -54,6 +54,16 @@ async function ContenuProfil({
     estBloque = !!blocage;
   }
 
+  // Les règles de sécurité ne renvoient que les publications visibles pour moi.
+  const { data: publications } = await supabase
+    .from("posts")
+    .select("id, content, created_at")
+    .eq("author_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  const liste = publications ?? [];
+
   const inscrit = new Date(profile.created_at).toLocaleDateString("fr-FR", {
     month: "long",
     year: "numeric",
@@ -90,6 +100,28 @@ async function ContenuProfil({
           Ce compte est privé. Envoie une demande d&apos;abonnement pour voir ses publications.
         </p>
       )}
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">Publications</h2>
+
+        {liste.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">Aucune publication visible.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {liste.map((p) => (
+              <li key={p.id} className="rounded-xl border border-border p-4">
+                <p className="whitespace-pre-wrap">{p.content}</p>
+                <p className="mt-2 text-xs text-muted">
+                  {new Date(p.created_at).toLocaleString("fr-FR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
