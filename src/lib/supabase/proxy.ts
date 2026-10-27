@@ -14,6 +14,13 @@ const PUBLIC_PATHS = [
   "/confidentialite",
 ];
 
+function redirigerVers(request: NextRequest, chemin: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = chemin;
+  url.search = "";
+  return NextResponse.redirect(url);
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -43,28 +50,27 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-
   const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/connexion";
-    return NextResponse.redirect(url);
+  if (!user) {
+    if (isPublic) return response;
+    return redirigerVers(request, "/connexion");
   }
 
-  // /profil envoie vers mon profil public.
-  if (user && pathname === "/profil") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .maybeSingle();
+  const { data: moi } = await supabase
+    .from("profiles")
+    .select("is_banned, username")
+    .eq("id", user.id)
+    .maybeSingle();
 
-    if (profile) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/u/${profile.username}`;
-      return NextResponse.redirect(url);
-    }
+  const banni = !!moi?.is_banned;
+
+  if (banni && pathname !== "/banni") return redirigerVers(request, "/banni");
+  if (!banni && pathname === "/banni") return redirigerVers(request, "/");
+
+  // /profil envoie vers mon profil public.
+  if (!banni && pathname === "/profil" && moi?.username) {
+    return redirigerVers(request, `/u/${moi.username}`);
   }
 
   return response;

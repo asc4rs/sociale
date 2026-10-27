@@ -58,9 +58,14 @@ export function SectionCompte({ estAdmin }: Props) {
 
       {estAdmin && (
         <section>
-          <h2 className="text-lg font-semibold">Modération</h2>
-          <div className="mt-3">
-            <Link href="/moderation" className={lienClasse}>Voir les signalements</Link>
+          <h2 className="text-lg font-semibold">Administration</h2>
+          <div className="mt-3 flex flex-col gap-2">
+            <Link href="/administration" className={lienClasse}>
+              Gérer les utilisateurs et publications
+            </Link>
+            <Link href="/moderation" className={lienClasse}>
+              Voir les signalements
+            </Link>
           </div>
         </section>
       )}

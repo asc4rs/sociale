@@ -14,6 +14,7 @@ type Notification = {
   created_at: string;
   post_id: string | null;
   comment_id: string | null;
+  detail: string | null;
   actor: Acteur | Acteur[] | null;
 };
 
@@ -25,12 +26,14 @@ const TEXTES: Record<string, string> = {
   repost: "a republié ta publication",
   mention: "t'a mentionné",
   message: "t'a envoyé un message",
+  warning: "t'a envoyé un avertissement de modération",
 };
 
 function lienPour(n: Notification, pseudo: string) {
   if (n.type === "follow") return `/u/${pseudo}`;
   if (n.type === "follow_request") return "/demandes";
   if (n.type === "message") return "/messages";
+  if (n.type === "warning") return "/notifications";
   if (n.post_id) {
     const base = `/publication/${n.post_id}`;
     return n.comment_id ? `${base}?commentaire=${n.comment_id}` : base;
@@ -60,7 +63,7 @@ async function ContenuNotifications() {
   const { data } = await supabase
     .from("notifications")
     .select(
-      "id, type, read, created_at, post_id, comment_id, actor:profiles!notifications_actor_id_fkey(username, display_name)",
+      "id, type, read, created_at, post_id, comment_id, detail, actor:profiles!notifications_actor_id_fkey(username, display_name)",
     )
     .eq("recipient_id", user.id)
     .order("created_at", { ascending: false })
@@ -99,6 +102,9 @@ async function ContenuNotifications() {
                     <span className="font-semibold">{acteur?.display_name ?? "Quelqu'un"}</span>{" "}
                     {TEXTES[n.type] ?? "t'a envoyé une notification"}
                   </p>
+                  {n.detail && (
+                    <p className="mt-2 whitespace-pre-wrap text-sm">{n.detail}</p>
+                  )}
                   <p className="mt-1 text-xs text-muted">{date}</p>
                 </Link>
               </li>
