@@ -1,15 +1,12 @@
-import Link from "next/link";
-
 type LogoProps = {
   className?: string;
 };
 
-// Le logo ramène à l'accueil et recharge la page.
+// Une balise <a> classique : le clic recharge la page d'accueil.
 export function Logo({ className = "" }: LogoProps) {
   return (
-    <Link
+    <a
       href="/"
-      reloadDocument
       aria-label="Sociale, retour à l'accueil"
       className={`flex items-center gap-2 rounded-xl ${className}`}
     >
@@ -20,6 +17,6 @@ export function Logo({ className = "" }: LogoProps) {
         S
       </span>
       <span className="text-xl font-bold tracking-tight">Sociale</span>
-    </Link>
+    </a>
   );
 }
