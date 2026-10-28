@@ -73,7 +73,7 @@ export function PublicationCarte({
       </div>
       <p className="text-sm text-muted">@{auteurPseudo}</p>
 
-      <p className="mt-3 whitespace-pre-wrap">{contenu}</p>
+      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{contenu}</p>
 
       <div className="mt-3 flex flex-nowrap items-center gap-2">
         {connecte && (

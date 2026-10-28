@@ -1,4 +1,4 @@
-// Pages sans aucun menu (ni barre du haut, ni barre du bas, ni menu de gauche).
+// Pages sans aucun menu (connexion, inscription, mot de passe).
 export const PAGES_SANS_MENU = [
   "/connexion",
   "/inscription",
@@ -8,7 +8,15 @@ export const PAGES_SANS_MENU = [
   "/banni",
 ];
 
-// Pages où la flèche de retour est utile (pages secondaires).
+// Pages légales : affichées seules aux visiteurs non connectés.
+export const PAGES_LEGALES = [
+  "/aide",
+  "/a-propos",
+  "/conditions",
+  "/confidentialite",
+];
+
+// Pages où la flèche de retour est utile sur mobile.
 export const PAGES_AVEC_RETOUR = [
   "/u/",
   "/publication/",

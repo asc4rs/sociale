@@ -130,7 +130,7 @@ export function SectionCommentaires({ postId, commentaires, connecte, cible = nu
               )}
             </div>
 
-            <p className="mt-2 whitespace-pre-wrap">{c.contenu}</p>
+            <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{c.contenu}</p>
           </li>
         ))}
       </ul>
