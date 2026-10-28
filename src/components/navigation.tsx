@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { CompteurNotifications } from "@/components/compteur-notifications";
 import { Logo } from "./logo";
 
@@ -25,16 +26,17 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   compteur?: boolean;
+  prive?: boolean;
 };
 
-// Menu complet, affiché sur ordinateur.
+// Menu complet, sur ordinateur.
 const TOUS: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/explorer", label: "Explorer", icon: Compass },
   { href: "/recherche", label: "Recherche", icon: Search },
   { href: "/notifications", label: "Notifications", icon: Bell, compteur: true },
   { href: "/messages", label: "Messages", icon: Mail },
-  { href: "/demandes", label: "Demandes", icon: UserPlus },
+  { href: "/demandes", label: "Demandes", icon: UserPlus, prive: true },
   { href: "/favoris", label: "Favoris", icon: Bookmark },
   { href: "/profil", label: "Profil", icon: User },
   { href: "/parametres", label: "Paramètres", icon: Settings },
@@ -43,28 +45,56 @@ const TOUS: NavItem[] = [
 // Barre du bas, sur téléphone.
 const BAS: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
-  { href: "/explorer", label: "Explorer", icon: Compass },
+  { href: "/notifications", label: "Notifications", icon: Bell, compteur: true },
   { href: "/messages", label: "Messages", icon: Mail },
   { href: "/profil", label: "Profil", icon: User },
 ];
 
 // Menu à trois barres, sur téléphone.
 const MENU: NavItem[] = [
-  { href: "/notifications", label: "Notifications", icon: Bell, compteur: true },
-  { href: "/demandes", label: "Demandes", icon: UserPlus },
+  { href: "/explorer", label: "Explorer", icon: Compass },
+  { href: "/demandes", label: "Demandes", icon: UserPlus, prive: true },
   { href: "/favoris", label: "Favoris", icon: Bookmark },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
-type Variante = "side" | "bottom" | "menu";
+// Indique si le compte connecté est privé (la page Demandes n'existe que dans ce cas).
+function useEstPrive() {
+  const pathname = usePathname();
+  const [prive, setPrive] = useState(false);
 
-function estActif(href: string, pathname: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  useEffect(() => {
+    async function charger() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_private")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setPrive(!!data?.is_private);
+    }
+    charger();
+  }, [pathname]);
+
+  return prive;
 }
+
+function filtrer(liste: NavItem[], prive: boolean) {
+  return liste.filter((item) => !item.prive || prive);
+}
+
+type Variante = "side" | "bottom" | "menu";
 
 function NavLink({ item, variante }: { item: NavItem; variante: Variante }) {
   const pathname = usePathname();
-  const actif = estActif(item.href, pathname);
+  const actif =
+    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
   const Icone = item.icon;
 
   const disposition = {
@@ -92,15 +122,17 @@ function NavLink({ item, variante }: { item: NavItem; variante: Variante }) {
   );
 }
 
-// Menu de gauche sur ordinateur.
+// Menu de gauche, sur ordinateur.
 export function SidebarNav() {
+  const prive = useEstPrive();
+
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border p-4 md:flex">
       <div className="px-3 py-4">
         <Logo />
       </div>
       <nav aria-label="Navigation principale" className="mt-4 flex flex-col gap-1">
-        {TOUS.map((item) => (
+        {filtrer(TOUS, prive).map((item) => (
           <NavLink key={item.href} item={item} variante="side" />
         ))}
       </nav>
@@ -125,6 +157,7 @@ export function BottomNav() {
 // En-tête et menu à trois barres, sur téléphone uniquement.
 export function BarreMobile() {
   const pathname = usePathname();
+  const prive = useEstPrive();
   const [ouvert, setOuvert] = useState(false);
 
   // Le menu se ferme à chaque changement de page.
@@ -178,7 +211,7 @@ export function BarreMobile() {
               </button>
             </div>
             <nav aria-label="Menu" className="flex flex-col gap-1">
-              {MENU.map((item) => (
+              {filtrer(MENU, prive).map((item) => (
                 <NavLink key={item.href} item={item} variante="menu" />
               ))}
             </nav>

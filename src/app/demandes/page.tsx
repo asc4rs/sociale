@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDemandesRecues } from "@/app/actions/abonnements";
@@ -28,6 +28,15 @@ async function ContenuDemandes() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/connexion");
+
+  const { data: moi } = await supabase
+    .from("profiles")
+    .select("is_private")
+    .eq("id", user.id)
+    .single();
+
+  // Les demandes d'abonnement n'existent que pour les comptes privés.
+  if (!moi?.is_private) notFound();
 
   const demandes = (await getDemandesRecues()) as unknown as Demande[];
 

@@ -2,13 +2,14 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { PAGES_AVEC_RETOUR, commencePar } from "@/lib/pages";
 
-// Flèche de retour sur toutes les pages, sauf l'accueil.
+// Flèche de retour, uniquement sur les pages secondaires.
 export function BarreRetour() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === "/") return null;
+  if (!commencePar(pathname, PAGES_AVEC_RETOUR)) return null;
 
   function retour() {
     if (window.history.length > 1) {
