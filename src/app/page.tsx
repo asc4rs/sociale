@@ -20,6 +20,7 @@ type Publication = {
   content: string;
   created_at: string;
   author_id: string;
+  views_count: number;
   profiles: Auteur | Auteur[] | null;
   likes: { user_id: string }[] | null;
   reposts: { user_id: string }[] | null;
@@ -50,19 +51,19 @@ async function ContenuAccueil() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // La base ne renvoie que les publications, likes, republications et commentaires autorisés.
   const { data } = await supabase
     .from("posts")
     .select(
-      "id, content, created_at, author_id, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name))",
+      "id, content, created_at, author_id, views_count, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name))",
     )
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const publications = (data ?? []) as unknown as Publication[];
+  let publications = (data ?? []) as unknown as Publication[];
 
   let favoris: string[] = [];
   let epingleId: string | null = null;
+  let masquees = new Set<string>();
 
   if (user) {
     const { data: fav } = await supabase
@@ -77,7 +78,16 @@ async function ContenuAccueil() {
       .eq("id", user.id)
       .maybeSingle();
     epingleId = moi?.pinned_post_id ?? null;
+
+    // Publications que j'ai masquées ou dont je ne veux pas voir le contenu.
+    const { data: masques } = await supabase
+      .from("post_masques")
+      .select("post_id")
+      .eq("user_id", user.id);
+    masquees = new Set((masques ?? []).map((m) => m.post_id));
   }
+
+  publications = publications.filter((p) => !masquees.has(p.id));
 
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
@@ -117,6 +127,7 @@ async function ContenuAccueil() {
                 id={p.id}
                 contenu={p.content}
                 date={formaterDate(p.created_at)}
+                auteurId={p.author_id}
                 auteurNom={auteur?.display_name ?? "Compte inconnu"}
                 auteurPseudo={auteur?.username ?? "inconnu"}
                 estMienne={user?.id === p.author_id}
@@ -128,6 +139,7 @@ async function ContenuAccueil() {
                 dejaRepost={reposts.some((r) => r.user_id === user?.id)}
                 dejaFavori={favoris.includes(p.id)}
                 estEpinglee={epingleId === p.id}
+                vues={p.views_count}
               />
             </li>
           );

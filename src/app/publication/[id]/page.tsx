@@ -21,6 +21,7 @@ type PublicationBrute = {
   content: string;
   created_at: string;
   author_id: string;
+  views_count: number;
   profiles: Auteur | Auteur[] | null;
   likes: { user_id: string }[] | null;
   reposts: { user_id: string }[] | null;
@@ -74,7 +75,7 @@ async function ContenuPublication({
   const { data } = await supabase
     .from("posts")
     .select(
-      "id, content, created_at, author_id, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name))",
+      "id, content, created_at, author_id, views_count, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -122,7 +123,7 @@ async function ContenuPublication({
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
       <Link href="/" className="text-sm text-muted hover:underline">
-        ← Pour toi
+        ← Accueil
       </Link>
 
       <div className="mt-4">
@@ -130,6 +131,7 @@ async function ContenuPublication({
           id={p.id}
           contenu={p.content}
           date={formaterDate(p.created_at)}
+          auteurId={p.author_id}
           auteurNom={auteur?.display_name ?? "Compte inconnu"}
           auteurPseudo={auteur?.username ?? "inconnu"}
           estMienne={user?.id === p.author_id}
@@ -141,6 +143,7 @@ async function ContenuPublication({
           dejaRepost={reposts.some((r) => r.user_id === user?.id)}
           dejaFavori={favori}
           estEpinglee={epingle}
+          vues={p.views_count}
           commentaireCible={commentaire ?? null}
         />
       </div>

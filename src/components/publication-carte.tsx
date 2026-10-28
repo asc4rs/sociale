@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { supprimerPublication } from "@/app/actions/publications";
+import { ApercuProfil } from "@/components/apercu-profil";
 import { BoutonLike } from "@/components/bouton-like";
 import { BoutonsPublication } from "@/components/boutons-publication";
-import { BoutonSignaler } from "@/components/bouton-signaler";
+import { EnregistrerVue } from "@/components/enregistrer-vue";
+import { MenuPublication } from "@/components/menu-publication";
 import {
   SectionCommentaires,
   type CommentaireAffiche,
@@ -17,6 +19,7 @@ type Props = {
   id: string;
   contenu: string;
   date: string;
+  auteurId: string;
   auteurNom: string;
   auteurPseudo: string;
   estMienne: boolean;
@@ -28,6 +31,7 @@ type Props = {
   dejaRepost: boolean;
   dejaFavori: boolean;
   estEpinglee: boolean;
+  vues: number;
   commentaireCible?: string | null;
 };
 
@@ -35,6 +39,7 @@ export function PublicationCarte({
   id,
   contenu,
   date,
+  auteurId,
   auteurNom,
   auteurPseudo,
   estMienne,
@@ -46,6 +51,7 @@ export function PublicationCarte({
   dejaRepost,
   dejaFavori,
   estEpinglee,
+  vues,
   commentaireCible = null,
 }: Props) {
   const router = useRouter();
@@ -62,20 +68,28 @@ export function PublicationCarte({
 
   return (
     <article id={`publication-${id}`} className="rounded-xl border border-border p-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <Link href={`/u/${auteurPseudo}`} className="font-semibold hover:underline">
-          {auteurNom}
-        </Link>
-        <span className="text-xs text-muted">
-          {estEpinglee && "Épinglée · "}
-          {date}
-        </span>
+      <div className="flex items-start justify-between gap-2">
+        <ApercuProfil auteurId={auteurId}>
+          <Link href={`/u/${auteurPseudo}`} className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface text-sm font-bold"
+            >
+              {auteurNom.charAt(0).toUpperCase()}
+            </span>
+            <span>
+              <span className="block font-semibold hover:underline">{auteurNom}</span>
+              <span className="block text-sm text-muted">@{auteurPseudo}</span>
+            </span>
+          </Link>
+        </ApercuProfil>
+
+        {connecte && !estMienne && <MenuPublication postId={id} auteurId={auteurId} />}
       </div>
-      <p className="text-sm text-muted">@{auteurPseudo}</p>
 
       <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{contenu}</p>
 
-      <div className="mt-3 flex flex-nowrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {connecte && (
           <BoutonLike postId={id} nombreInitial={nombreLikes} dejaLikeInitial={dejaLike} />
         )}
@@ -101,10 +115,6 @@ export function PublicationCarte({
           connecte={connecte}
         />
 
-        {!estMienne && connecte && (
-          <BoutonSignaler postId={id} libelle="Signaler" icone />
-        )}
-
         {estMienne && (
           <button
             type="button"
@@ -118,6 +128,18 @@ export function PublicationCarte({
           </button>
         )}
       </div>
+
+      <div className="mt-3 flex items-center justify-between text-xs text-muted">
+        <span>
+          {estEpinglee && "Épinglée · "}
+          {date}
+        </span>
+        <span>
+          {vues} {vues > 1 ? "vues" : "vue"}
+        </span>
+      </div>
+
+      <EnregistrerVue postId={id} auteurId={auteurId} />
 
       {commentairesOuverts && (
         <SectionCommentaires
