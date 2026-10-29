@@ -46,7 +46,7 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
-      <div>
+      <div className="min-w-0">
         <p className="font-semibold">{libelle}</p>
         {description && <p className="text-sm text-muted">{description}</p>}
         {erreur && (
@@ -55,6 +55,7 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
           </p>
         )}
       </div>
+
       <button
         type="button"
         role="switch"
@@ -62,13 +63,14 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
         aria-label={libelle}
         disabled={pending}
         onClick={basculer}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-          etat ? "bg-accent" : "bg-surface border border-border"
+        className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors disabled:opacity-50 ${
+          etat ? "border-accent bg-accent" : "border-border bg-surface"
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-            etat ? "translate-x-5" : "translate-x-0.5"
+          aria-hidden="true"
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+            etat ? "translate-x-5 bg-accent-foreground" : "translate-x-0 bg-muted"
           }`}
         />
       </button>
