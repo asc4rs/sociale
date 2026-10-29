@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { PublicationCarte } from "@/components/publication-carte";
 import type { CommentaireAffiche } from "@/components/section-commentaires";
+import type { OptionSondage } from "@/components/sondage";
 
 type Auteur = { username: string; display_name: string };
 
@@ -16,16 +17,26 @@ type CommentaireBrut = {
   profiles: Auteur | Auteur[] | null;
 };
 
+type OptionBrute = {
+  id: string;
+  libelle: string;
+  position: number;
+  poll_votes: { user_id: string }[] | null;
+};
+
 type PublicationBrute = {
   id: string;
   content: string;
   created_at: string;
   author_id: string;
+  kind: "texte" | "sondage" | "question";
+  publish_at: string;
   views_count: number;
   profiles: Auteur | Auteur[] | null;
   likes: { user_id: string }[] | null;
   reposts: { user_id: string }[] | null;
   comments: CommentaireBrut[] | null;
+  poll_options: OptionBrute[] | null;
 };
 
 function unObjet<T>(valeur: T | T[] | null | undefined): T | null {
@@ -75,7 +86,7 @@ async function ContenuPublication({
   const { data } = await supabase
     .from("posts")
     .select(
-      "id, content, created_at, author_id, views_count, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name))",
+      "id, content, created_at, author_id, kind, publish_at, views_count, profiles!posts_author_id_fkey(username, display_name), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name)), poll_options(id, libelle, position, poll_votes(user_id))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -100,6 +111,23 @@ async function ContenuPublication({
         estMien: user?.id === c.author_id,
       };
     });
+
+  const options: OptionSondage[] = [...(p.poll_options ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((o) => {
+      const votes = o.poll_votes ?? [];
+      return {
+        id: o.id,
+        libelle: o.libelle,
+        votes: votes.length,
+        choisie: !!user && votes.some((v) => v.user_id === user.id),
+      };
+    });
+
+  // Seul l'auteur voit qu'une publication est encore programmée.
+  const estMienne = user?.id === p.author_id;
+  const programmeePour =
+    estMienne && new Date(p.publish_at) > new Date() ? formaterDate(p.publish_at) : null;
 
   let favori = false;
   let epingle = false;
@@ -134,7 +162,7 @@ async function ContenuPublication({
           auteurId={p.author_id}
           auteurNom={auteur?.display_name ?? "Compte inconnu"}
           auteurPseudo={auteur?.username ?? "inconnu"}
-          estMienne={user?.id === p.author_id}
+          estMienne={estMienne}
           connecte={!!user}
           nombreLikes={likes.length}
           dejaLike={likes.some((l) => l.user_id === user?.id)}
@@ -144,6 +172,9 @@ async function ContenuPublication({
           dejaFavori={favori}
           estEpinglee={epingle}
           vues={p.views_count}
+          kind={p.kind}
+          options={options}
+          programmeePour={programmeePour}
           commentaireCible={commentaire ?? null}
         />
       </div>

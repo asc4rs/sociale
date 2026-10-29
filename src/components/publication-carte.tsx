@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Trash2 } from "lucide-react";
+import { Clock, MessageCircle, Trash2 } from "lucide-react";
 import { supprimerPublication } from "@/app/actions/publications";
 import { ApercuProfil } from "@/components/apercu-profil";
 import { BoutonLike } from "@/components/bouton-like";
@@ -14,6 +14,7 @@ import {
   SectionCommentaires,
   type CommentaireAffiche,
 } from "@/components/section-commentaires";
+import { Sondage, type OptionSondage } from "@/components/sondage";
 
 type Props = {
   id: string;
@@ -32,6 +33,9 @@ type Props = {
   dejaFavori: boolean;
   estEpinglee: boolean;
   vues: number;
+  kind?: "texte" | "sondage" | "question";
+  options?: OptionSondage[];
+  programmeePour?: string | null;
   commentaireCible?: string | null;
 };
 
@@ -52,6 +56,9 @@ export function PublicationCarte({
   dejaFavori,
   estEpinglee,
   vues,
+  kind = "texte",
+  options = [],
+  programmeePour = null,
   commentaireCible = null,
 }: Props) {
   const router = useRouter();
@@ -87,7 +94,22 @@ export function PublicationCarte({
         {connecte && !estMienne && <MenuPublication postId={id} auteurId={auteurId} />}
       </div>
 
+      {kind === "question" && (
+        <p className="mt-3 text-xs font-semibold text-muted">Question</p>
+      )}
+
+      {programmeePour && (
+        <p className="mt-2 inline-flex items-center gap-1 text-xs text-muted">
+          <Clock size={14} aria-hidden="true" />
+          Programmée pour le {programmeePour}
+        </p>
+      )}
+
       <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{contenu}</p>
+
+      {kind === "sondage" && options.length > 0 && (
+        <Sondage postId={id} options={options} connecte={connecte} />
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {connecte && (
