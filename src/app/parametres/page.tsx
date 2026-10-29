@@ -1,20 +1,18 @@
-import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { FormulaireParametres } from "@/components/formulaire-parametres";
-import { SectionCompte } from "@/components/section-compte";
 
-export default function ParametresPage() {
-  return (
-    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
-      <ContenuParametres />
-    </Suspense>
-  );
-}
+const CATEGORIES = [
+  { href: "/parametres/compte", titre: "Votre compte", texte: "Informations, mot de passe, suppression du compte." },
+  { href: "/parametres/notifications", titre: "Notifications", texte: "Choisir les notifications que tu reçois." },
+  { href: "/parametres/confidentialite", titre: "Confidentialité", texte: "Compte privé ou public." },
+  { href: "/parametres/bloques", titre: "Comptes bloqués", texte: "Retrouver et débloquer des comptes." },
+  { href: "/parametres/affichage", titre: "Affichage, accessibilité et langue", texte: "Thème et apparence." },
+  { href: "/parametres/aide", titre: "Aide et informations", texte: "FAQ, à propos, conditions, confidentialité." },
+];
 
-async function ContenuParametres() {
-  // Indique à Next.js que la page se calcule à chaque visite.
+export default async function ParametresPage() {
   await connection();
 
   const supabase = await createClient();
@@ -24,41 +22,23 @@ async function ContenuParametres() {
 
   if (!user) redirect("/connexion");
 
-  const { data: moi } = await supabase
-    .from("profiles")
-    .select("is_private, is_admin, notif_follow, notif_like, notif_comment, notif_repost, notif_message")
-    .eq("id", user.id)
-    .single();
-
-  const { data: blocages } = await supabase
-    .from("blocks")
-    .select("blocked_id, profiles!blocks_blocked_id_fkey(username, display_name)")
-    .eq("blocker_id", user.id);
-
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
       <h1 className="text-3xl font-bold">Paramètres</h1>
 
-      <FormulaireParametres
-        estPrive={moi?.is_private ?? false}
-        preferences={{
-          notif_follow: moi?.notif_follow ?? true,
-          notif_like: moi?.notif_like ?? true,
-          notif_comment: moi?.notif_comment ?? true,
-          notif_repost: moi?.notif_repost ?? true,
-          notif_message: moi?.notif_message ?? true,
-        }}
-        bloques={(blocages ?? []).map((b) => {
-          const p = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
-          return {
-            id: b.blocked_id,
-            username: p?.username ?? "inconnu",
-            display_name: p?.display_name ?? "Compte inconnu",
-          };
-        })}
-      />
-
-      <SectionCompte estAdmin={moi?.is_admin ?? false} />
+      <ul className="mt-6 flex flex-col gap-2">
+        {CATEGORIES.map((c) => (
+          <li key={c.href}>
+            <Link
+              href={c.href}
+              className="block rounded-xl border border-border p-4 transition-colors hover:bg-surface"
+            >
+              <span className="block font-semibold">{c.titre}</span>
+              <span className="block text-sm text-muted">{c.texte}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
