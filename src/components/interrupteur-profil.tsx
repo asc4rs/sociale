@@ -63,14 +63,14 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
         aria-label={libelle}
         disabled={pending}
         onClick={basculer}
-        className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors disabled:opacity-50 ${
-          etat ? "border-accent bg-accent" : "border-border bg-surface"
+        className={`relative h-6 w-11 shrink-0 rounded-full disabled:opacity-50 ${
+          etat ? "bg-white" : "bg-neutral-700"
         }`}
       >
         <span
           aria-hidden="true"
-          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
-            etat ? "translate-x-5 bg-accent-foreground" : "translate-x-0 bg-muted"
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-neutral-900 transition-transform ${
+            etat ? "translate-x-5.5" : "translate-x-0.5"
           }`}
         />
       </button>
