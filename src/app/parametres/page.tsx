@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -12,7 +13,15 @@ const CATEGORIES = [
   { href: "/parametres/aide", titre: "Aide et informations", texte: "FAQ, à propos, conditions, confidentialité." },
 ];
 
-export default async function ParametresPage() {
+export default function ParametresPage() {
+  return (
+    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
+      <ContenuParametres />
+    </Suspense>
+  );
+}
+
+async function ContenuParametres() {
   await connection();
 
   const supabase = await createClient();

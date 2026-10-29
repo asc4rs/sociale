@@ -1,9 +1,18 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { InterrupteurProfil } from "@/components/interrupteur-profil";
 
-export default async function NotificationsParametres() {
+export default function NotificationsParametres() {
+  return (
+    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
+      <ContenuNotifications />
+    </Suspense>
+  );
+}
+
+async function ContenuNotifications() {
   await connection();
 
   const supabase = await createClient();
@@ -38,7 +47,7 @@ export default async function NotificationsParametres() {
       <section>
         <h2 className="text-lg font-semibold">Filtres</h2>
         <p className="mt-2 text-sm text-muted">
-          Dans la page Notifications, les catégories Toutes et Mentions te permettent de filtrer l'affichage.
+          Dans la page Notifications, les catégories Toutes et Mentions te permettent de filtrer l&apos;affichage.
         </p>
       </section>
     </div>

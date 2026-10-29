@@ -1,10 +1,19 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ChangerMotDePasse } from "@/components/changer-mot-de-passe";
 
-export default async function CompteParametres() {
+export default function CompteParametres() {
+  return (
+    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
+      <ContenuCompte />
+    </Suspense>
+  );
+}
+
+async function ContenuCompte() {
   await connection();
 
   const supabase = await createClient();

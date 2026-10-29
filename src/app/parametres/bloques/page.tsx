@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,15 @@ type Bloque = {
   profiles: { username: string; display_name: string } | { username: string; display_name: string }[] | null;
 };
 
-export default async function BloquesParametres() {
+export default function BloquesParametres() {
+  return (
+    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
+      <ContenuBloques />
+    </Suspense>
+  );
+}
+
+async function ContenuBloques() {
   await connection();
 
   const supabase = await createClient();

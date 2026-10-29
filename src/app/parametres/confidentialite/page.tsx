@@ -1,9 +1,18 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { InterrupteurProfil } from "@/components/interrupteur-profil";
 
-export default async function ConfidentialiteParametres() {
+export default function ConfidentialiteParametres() {
+  return (
+    <Suspense fallback={<p className="p-8 text-muted">Chargement...</p>}>
+      <ContenuConfidentialite />
+    </Suspense>
+  );
+}
+
+async function ContenuConfidentialite() {
   await connection();
 
   const supabase = await createClient();
