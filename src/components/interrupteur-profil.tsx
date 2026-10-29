@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -13,7 +12,6 @@ type Props = {
 
 // Interrupteur qui enregistre directement une option de ton profil.
 export function InterrupteurProfil({ champ, libelle, description, valeur }: Props) {
-  const router = useRouter();
   const [etat, setEtat] = useState(valeur);
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -38,9 +36,7 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
       if (error) {
         setEtat(!nouveau);
         setErreur("Enregistrement impossible. Réessaie.");
-        return;
       }
-      router.refresh();
     });
   }
 
@@ -63,15 +59,14 @@ export function InterrupteurProfil({ champ, libelle, description, valeur }: Prop
         aria-label={libelle}
         disabled={pending}
         onClick={basculer}
-        className={`relative h-6 w-11 shrink-0 rounded-full disabled:opacity-50 ${
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-100 disabled:opacity-50 ${
           etat ? "bg-white" : "bg-neutral-700"
         }`}
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-neutral-900 transition-transform ${
-            etat ? "translate-x-5.5" : "translate-x-0.5"
-          }`}
+          style={{ transform: etat ? "translateX(22px)" : "translateX(2px)" }}
+          className="absolute top-0.5 h-5 w-5 rounded-full bg-neutral-900 transition-transform duration-100"
         />
       </button>
     </div>
