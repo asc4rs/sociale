@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 const TAILLE_MAX = 2 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-// Dimensions attendues selon le type d'image.
+// Règles affichées avec le bouton ⓘ.
 const REGLES = {
   avatar_url: {
     texte: "Photo de profil : carrée, 200 × 200 px minimum (par exemple 400 × 400 px).",
@@ -24,7 +25,6 @@ const REGLES = {
   },
 } as const;
 
-// Lit la largeur et la hauteur réelles de l'image choisie.
 function lireDimensions(url: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -39,14 +39,25 @@ export function TeleverserImage({ champ, libelle }: Props) {
   const entree = useRef<HTMLInputElement>(null);
   const [fichier, setFichier] = useState<File | null>(null);
   const [apercu, setApercu] = useState<string | null>(null);
+  const [infoOuverte, setInfoOuverte] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Libère la mémoire de l'aperçu quand il change ou disparaît.
+  // Libère la mémoire de l'aperçu quand il disparaît.
   useEffect(() => {
     return () => {
       if (apercu) URL.revokeObjectURL(apercu);
     };
+  }, [apercu]);
+
+  // Ferme l'aperçu avec la touche Échap.
+  useEffect(() => {
+    if (!apercu) return;
+    function touche(e: KeyboardEvent) {
+      if (e.key === "Escape") annuler();
+    }
+    window.addEventListener("keydown", touche);
+    return () => window.removeEventListener("keydown", touche);
   }, [apercu]);
 
   async function choisir(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,7 +95,6 @@ export function TeleverserImage({ champ, libelle }: Props) {
       return;
     }
 
-    // Image valide : on affiche l'aperçu, sans rien envoyer.
     setApercu(url);
     setFichier(choix);
   }
@@ -92,7 +102,6 @@ export function TeleverserImage({ champ, libelle }: Props) {
   function annuler() {
     setApercu(null);
     setFichier(null);
-    setMessage(null);
   }
 
   function confirmer() {
@@ -114,6 +123,7 @@ export function TeleverserImage({ champ, libelle }: Props) {
         .upload(chemin, fichier, { contentType: fichier.type });
       if (erreurEnvoi) {
         setMessage("Envoi impossible. Réessaie.");
+        annuler();
         return;
       }
 
@@ -125,6 +135,7 @@ export function TeleverserImage({ champ, libelle }: Props) {
 
       if (error) {
         setMessage("Enregistrement impossible.");
+        annuler();
         return;
       }
       annuler();
@@ -155,7 +166,9 @@ export function TeleverserImage({ champ, libelle }: Props) {
   }
 
   const formeApercu =
-    champ === "avatar_url" ? "h-24 w-24 rounded-full" : "h-24 w-72 rounded-xl";
+    champ === "avatar_url"
+      ? "h-64 w-64 rounded-full sm:h-80 sm:w-80"
+      : "h-auto w-full max-w-2xl rounded-xl aspect-[3/1]";
 
   return (
     <div className="flex flex-col gap-2">
@@ -167,20 +180,69 @@ export function TeleverserImage({ champ, libelle }: Props) {
         className="hidden"
       />
 
-      {apercu ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm font-semibold">Aperçu</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => entree.current?.click()}
+          disabled={pending}
+          className="rounded-xl border border-border px-3 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+        >
+          {libelle}
+        </button>
+
+        <button
+          type="button"
+          onClick={supprimer}
+          disabled={pending}
+          className="rounded-xl px-3 py-1.5 text-sm text-red-600 hover:bg-surface disabled:opacity-50"
+        >
+          Supprimer
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setInfoOuverte(!infoOuverte)}
+          aria-label="Dimensions requises"
+          aria-expanded={infoOuverte}
+          className="rounded-full p-1.5 text-muted hover:bg-surface hover:text-foreground"
+        >
+          <Info size={16} aria-hidden="true" />
+        </button>
+      </div>
+
+      {infoOuverte && (
+        <p className="rounded-xl border border-border p-3 text-xs text-muted">
+          {REGLES[champ].texte}
+        </p>
+      )}
+
+      {message && (
+        <p role="alert" className="text-sm text-red-600">
+          {message}
+        </p>
+      )}
+
+      {apercu && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Aperçu de l'image"
+          className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-8 bg-black/90 p-6"
+        >
+          <p className="text-lg font-semibold text-white">Aperçu</p>
+
           <img
             src={apercu}
             alt="Aperçu de l'image choisie"
-            className={`${formeApercu} object-cover border border-border`}
+            className={`${formeApercu} object-cover`}
           />
-          <div className="flex gap-2">
+
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={confirmer}
               disabled={pending}
-              className="rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="rounded-xl bg-white px-6 py-2 text-sm font-semibold text-black disabled:opacity-50"
             >
               {pending ? "Envoi..." : "Confirmer"}
             </button>
@@ -188,38 +250,12 @@ export function TeleverserImage({ champ, libelle }: Props) {
               type="button"
               onClick={annuler}
               disabled={pending}
-              className="rounded-xl border border-border px-4 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+              className="rounded-xl border border-white/40 px-6 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50"
             >
               Annuler
             </button>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => entree.current?.click()}
-            disabled={pending}
-            className="rounded-xl border border-border px-3 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
-          >
-            {libelle}
-          </button>
-          <button
-            type="button"
-            onClick={supprimer}
-            disabled={pending}
-            className="rounded-xl px-3 py-1.5 text-sm text-red-600 hover:bg-surface disabled:opacity-50"
-          >
-            Supprimer
-          </button>
-          <p className="w-full text-xs text-muted">{REGLES[champ].texte}</p>
-        </div>
-      )}
-
-      {message && (
-        <p role="alert" className="text-sm text-red-600">
-          {message}
-        </p>
       )}
     </div>
   );
