@@ -159,7 +159,7 @@ async function ContenuProfil({ params }: { params: Promise<{ username: string }>
             Modifier mon profil
           </Link>
         ) : (
-          user && <BoutonSuivreProfil cibleId={profil.id} etatInitial={etat} />
+          user && <ActionsProfil cibleId={profil.id} etatInitial={etat} />
         )}
       </div>
 
