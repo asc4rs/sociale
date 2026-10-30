@@ -2,7 +2,19 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Image as ImageIcon, Paperclip, Plus, Send, Smile, SmilePlus, Trash2, Video, X } from "lucide-react";
+import {
+  Copy,
+  Image as ImageIcon,
+  Info,
+  MoreHorizontal,
+  Paperclip,
+  Plus,
+  Send,
+  Smile,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
 import { envoyerDansConversation, supprimerMonMessage } from "@/app/actions/conversation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -54,6 +66,9 @@ const LIBELLES: Record<Genre, string> = {
   fichier: "Fichier",
 };
 
+const ELEMENT_MENU =
+  "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-surface";
+
 function genreDe(file: File): Genre | null {
   if (ACCEPT.image.split(",").includes(file.type)) return "image";
   if (ACCEPT.video.split(",").includes(file.type)) return "video";
@@ -90,6 +105,7 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
   const entree = useRef<HTMLInputElement>(null);
   const zone = useRef<HTMLTextAreaElement>(null);
   const liste = useRef<HTMLDivElement>(null);
+  const dernierClic = useRef<{ id: string; t: number } | null>(null);
 
   const [texte, setTexte] = useState("");
   const [piece, setPiece] = useState<Piece | null>(null);
@@ -98,12 +114,13 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
   const [erreur, setErreur] = useState<string | null>(null);
   const [reactions, setReactions] = useState<ReactionsMap>({});
   const [versionReactions, setVersionReactions] = useState(0);
-  const [selecteur, setSelecteur] = useState<string | null>(null);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [infoId, setInfoId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const idsKey = messages.map((m) => m.id).join(",");
 
-  // Charge les réactions des messages affichés, puis les actualise toutes les 15 secondes.
+  // Charge les réactions, puis les actualise toutes les 15 secondes.
   useEffect(() => {
     let annule = false;
 
@@ -140,10 +157,25 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
     };
   }, [idsKey, moiId, versionReactions]);
 
+  // Descend au dernier message à chaque nouvel envoi ou réception.
   useEffect(() => {
     const el = liste.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
+
+  // Ferme le menu quand on clique en dehors du message concerné.
+  useEffect(() => {
+    if (!menu) return;
+    function fermer(e: MouseEvent) {
+      const cible = (e.target as HTMLElement).closest("[data-message-id]");
+      if (cible?.getAttribute("data-message-id") !== menu) {
+        setMenu(null);
+        setInfoId(null);
+      }
+    }
+    document.addEventListener("mousedown", fermer);
+    return () => document.removeEventListener("mousedown", fermer);
+  }, [menu]);
 
   useEffect(() => {
     return () => {
@@ -151,35 +183,65 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
     };
   }, [piece]);
 
+  // Double appui sur une bulle (mobile) : ouvre le menu du message.
+  function gererClic(id: string) {
+    const maintenant = Date.now();
+    const precedent = dernierClic.current;
+    if (precedent && precedent.id === id && maintenant - precedent.t < 350) {
+      dernierClic.current = null;
+      setInfoId(null);
+      setMenu(id);
+      return;
+    }
+    dernierClic.current = { id, t: maintenant };
+  }
+
+  function basculerMenu(id: string) {
+    setInfoId(null);
+    setMenu(menu === id ? null : id);
+  }
+
   function basculerReaction(messageId: string, emoji: string) {
-    setSelecteur(null);
+    setMenu(null);
     setErreur(null);
     const dejaMoi = !!reactions[messageId]?.[emoji]?.moi;
     const supabase = createClient();
 
     startTransition(async () => {
-      let erreurRequete = null;
+      const { error } = dejaMoi
+        ? await supabase
+            .from("message_reactions")
+            .delete()
+            .eq("message_id", messageId)
+            .eq("user_id", moiId)
+            .eq("emoji", emoji)
+        : await supabase
+            .from("message_reactions")
+            .insert({ message_id: messageId, user_id: moiId, emoji });
 
-      if (dejaMoi) {
-        const { error } = await supabase
-          .from("message_reactions")
-          .delete()
-          .eq("message_id", messageId)
-          .eq("user_id", moiId)
-          .eq("emoji", emoji);
-        erreurRequete = error;
-      } else {
-        const { error } = await supabase
-          .from("message_reactions")
-          .insert({ message_id: messageId, user_id: moiId, emoji });
-        erreurRequete = error;
-      }
-
-      if (erreurRequete) {
+      if (error) {
         setErreur("Réaction impossible. Réessaie.");
         return;
       }
       setVersionReactions((v) => v + 1);
+    });
+  }
+
+  function copier(texteCopie: string) {
+    navigator.clipboard.writeText(texteCopie);
+    setMenu(null);
+  }
+
+  function supprimer(id: string) {
+    setMenu(null);
+    if (!window.confirm("Supprimer ce message ?")) return;
+    startTransition(async () => {
+      const r = await supprimerMonMessage(id);
+      if (r.error) {
+        setErreur(r.error);
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -264,18 +326,6 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
     });
   }
 
-  function supprimer(id: string) {
-    if (!window.confirm("Supprimer ce message ?")) return;
-    startTransition(async () => {
-      const r = await supprimerMonMessage(id);
-      if (r.error) {
-        setErreur(r.error);
-        return;
-      }
-      router.refresh();
-    });
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Liste des messages : seule partie qui défile */}
@@ -287,80 +337,112 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
 
           {messages.map((m) => {
             const chips = Object.entries(reactions[m.id] ?? {});
+            const ouvert = menu === m.id;
+
+            const boutonOptions = (
+              <button
+                type="button"
+                onClick={() => basculerMenu(m.id)}
+                aria-label="Options du message"
+                aria-expanded={ouvert}
+                className="hidden shrink-0 rounded-full p-1.5 text-muted hover:bg-surface focus:opacity-100 md:flex md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
+              >
+                <MoreHorizontal size={18} aria-hidden="true" />
+              </button>
+            );
 
             return (
-              <li key={m.id} className={`flex flex-col ${m.estMien ? "items-end" : "items-start"}`}>
+              <li key={m.id} className="flex flex-col">
                 <div
-                  className={`group relative max-w-[75%] rounded-3xl px-4 py-3 shadow-sm md:max-w-[60%] ${
-                    m.estMien
-                      ? "rounded-br-md bg-accent text-accent-foreground"
-                      : "rounded-bl-md border border-border bg-surface"
+                  data-message-id={m.id}
+                  className={`group relative flex items-center gap-2 ${
+                    m.estMien ? "justify-end" : "justify-start"
                   }`}
                 >
-                  {!m.estMien && <p className="mb-1 text-sm font-semibold">{m.auteurNom}</p>}
-
-                  {m.mediaUrl && m.mediaKind && (
-                    <div className="mb-2">
-                      <Media url={m.mediaUrl} kind={m.mediaKind} />
-                    </div>
-                  )}
-
-                  {m.contenu && (
-                    <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
-                      {m.contenu}
-                    </p>
-                  )}
+                  {m.estMien && boutonOptions}
 
                   <div
-                    className={`mt-1 flex items-center justify-end gap-2 text-xs ${
-                      m.estMien ? "opacity-70" : "text-muted"
+                    onClick={() => gererClic(m.id)}
+                    className={`max-w-[75%] cursor-default touch-manipulation select-text rounded-3xl px-4 py-3 shadow-sm md:max-w-[60%] ${
+                      m.estMien
+                        ? "rounded-br-md bg-accent text-accent-foreground"
+                        : "rounded-bl-md border border-border bg-surface"
                     }`}
                   >
-                    <span>{m.date}</span>
+                    {!m.estMien && <p className="mb-1 text-sm font-semibold">{m.auteurNom}</p>}
 
-                    <button
-                      type="button"
-                      onClick={() => setSelecteur(selecteur === m.id ? null : m.id)}
-                      aria-label="Réagir à ce message"
-                      aria-expanded={selecteur === m.id}
-                      title="Réagir"
-                      className="rounded-full p-1 text-current opacity-100 hover:bg-black/10 md:opacity-0 md:group-hover:opacity-100"
-                    >
-                      <SmilePlus size={14} aria-hidden="true" />
-                    </button>
-
-                    {m.estMien && (
-                      <button
-                        type="button"
-                        onClick={() => supprimer(m.id)}
-                        disabled={pending}
-                        aria-label="Supprimer ce message"
-                        title="Supprimer"
-                        className="rounded-full p-1 text-current hover:bg-black/10 disabled:opacity-50"
-                      >
-                        <Trash2 size={14} aria-hidden="true" />
-                      </button>
+                    {m.mediaUrl && m.mediaKind && (
+                      <div className="mb-2">
+                        <Media url={m.mediaUrl} kind={m.mediaKind} />
+                      </div>
                     )}
+
+                    {m.contenu && (
+                      <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
+                        {m.contenu}
+                      </p>
+                    )}
+
+                    <p className={`mt-1 text-right text-xs ${m.estMien ? "opacity-70" : "text-muted"}`}>
+                      {m.date}
+                    </p>
                   </div>
 
-                  {selecteur === m.id && (
+                  {!m.estMien && boutonOptions}
+
+                  {ouvert && (
                     <div
-                      className={`absolute bottom-full z-20 mb-2 flex gap-1 rounded-full border border-border bg-background p-1.5 shadow-xl ${
+                      className={`absolute bottom-full z-30 mb-2 w-64 rounded-2xl border border-border bg-background p-2 shadow-2xl ${
                         m.estMien ? "right-0" : "left-0"
                       }`}
                     >
-                      {REACTIONS_RAPIDES.map((e) => (
-                        <button
-                          key={e}
-                          type="button"
-                          aria-label={`Réagir avec ${e}`}
-                          onClick={() => basculerReaction(m.id, e)}
-                          disabled={pending}
-                          className="rounded-full p-1.5 text-xl hover:bg-surface disabled:opacity-50"
-                        >
-                          {e}
+                      <div className="flex justify-between gap-1 px-1 py-1">
+                        {REACTIONS_RAPIDES.map((e) => (
+                          <button
+                            key={e}
+                            type="button"
+                            aria-label={`Réagir avec ${e}`}
+                            onClick={() => basculerReaction(m.id, e)}
+                            disabled={pending}
+                            className="rounded-full p-1.5 text-xl hover:bg-surface disabled:opacity-50"
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="my-1 border-t border-border" />
+
+                      {m.contenu && (
+                        <button type="button" onClick={() => copier(m.contenu)} className={ELEMENT_MENU}>
+                          <Copy size={18} aria-hidden="true" />
+                          Copier le texte
                         </button>
-                      ))}
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setInfoId(infoId === m.id ? null : m.id)}
+                        className={ELEMENT_MENU}
+                      >
+                        <Info size={18} aria-hidden="true" />
+                        Info
+                      </button>
+                      {infoId === m.id && (
+                        <p className="px-3 pb-2 text-xs text-muted">Envoyé le {m.date}</p>
+                      )}
+
+                      {m.estMien && (
+                        <button
+                          type="button"
+                          onClick={() => supprimer(m.id)}
+                          disabled={pending}
+                          className={`${ELEMENT_MENU} text-red-600 disabled:opacity-50`}
+                        >
+                          <Trash2 size={18} aria-hidden="true" />
+                          Supprimer
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
