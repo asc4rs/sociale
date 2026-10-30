@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
-import { NouveauMessage } from "@/components/nouveau-message";
+import { NouveauMessagePopup } from "@/components/nouveau-message-popup";
 
 type Profil = { username: string; display_name: string; avatar_url: string | null };
 type Conversation = { id: string; is_group: boolean; name: string | null; created_at: string };
@@ -17,6 +17,7 @@ type Ligne = {
 type Membre = { conversation_id: string; user_id: string; profiles: Profil | Profil[] | null };
 type MessageRecent = { conversation_id: string; created_at: string; author_id: string };
 type Suggestion = { id: string; username: string; display_name: string; avatar_url: string | null };
+type Compte = { id: string; username: string; display_name: string; avatar_url: string | null };
 
 type Props = {
   searchParams: Promise<{ filtre?: string; q?: string }>;
@@ -71,6 +72,7 @@ async function ContenuMessages({ searchParams }: Props) {
         .from("messages")
         .select("conversation_id, created_at, author_id")
         .in("conversation_id", ids)
+        .eq("deleted", false)
         .order("created_at", { ascending: false })
         .limit(2000),
     ]);
@@ -128,6 +130,26 @@ async function ContenuMessages({ searchParams }: Props) {
       (q === "" || c.titre.toLowerCase().includes(q.toLowerCase())),
   );
 
+  // Comptes que je suis : liste de la fenêtre « Nouveau message ».
+  const { data: suivisData } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", user.id)
+    .eq("status", "accepted")
+    .limit(300);
+
+  const idsSuivis = (suivisData ?? []).map((f) => f.following_id);
+
+  let comptes: Compte[] = [];
+  if (idsSuivis.length > 0) {
+    const { data: profilsSuivis } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .in("id", idsSuivis)
+      .order("display_name", { ascending: true });
+    comptes = (profilsSuivis ?? []) as Compte[];
+  }
+
   // Suggestions : comptes que je suis, avec qui je n'ai pas encore de conversation privée.
   const dejaEcrit = new Set(
     membres
@@ -135,15 +157,7 @@ async function ContenuMessages({ searchParams }: Props) {
       .map((m) => m.user_id),
   );
 
-  const { data: suivisData } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", user.id)
-    .eq("status", "accepted")
-    .limit(200);
-
-  const aSuggerer = (suivisData ?? [])
-    .map((f) => f.following_id)
+  const aSuggerer = idsSuivis
     .filter((id) => id !== user.id && !dejaEcrit.has(id))
     .slice(0, 10);
 
@@ -164,11 +178,9 @@ async function ContenuMessages({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
-      <h1 className="text-3xl font-bold">Messages</h1>
-
-      <div className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-muted">Nouveau message ou groupe</h2>
-        <NouveauMessage />
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold">Messages</h1>
+        <NouveauMessagePopup comptes={comptes} />
       </div>
 
       {suggestions.length > 0 && (
