@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 
 const CATEGORIES = [
   { href: "/parametres/compte", titre: "Votre compte", texte: "Informations, mot de passe, suppression du compte." },
+  { href: "/statistiques", titre: "Statistiques", texte: "Vues, j'aime, abonnés et tes publications les plus vues." },
+  { href: "/parametres/exporter", titre: "Exporter mes données", texte: "Télécharger une copie de tes données." },
   { href: "/parametres/notifications", titre: "Notifications", texte: "Choisir les notifications que tu reçois." },
   { href: "/parametres/confidentialite", titre: "Confidentialité", texte: "Compte privé ou public." },
   { href: "/parametres/bloques", titre: "Comptes bloqués", texte: "Retrouver et débloquer des comptes." },

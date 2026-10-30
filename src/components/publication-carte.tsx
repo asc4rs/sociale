@@ -9,6 +9,7 @@ import { ApercuProfil } from "@/components/apercu-profil";
 import { Avatar } from "@/components/avatar";
 import { BoutonLike } from "@/components/bouton-like";
 import { BoutonsPublication } from "@/components/boutons-publication";
+import { CitationApercu } from "@/components/citation-apercu";
 import { EnregistrerVue } from "@/components/enregistrer-vue";
 import { MenuPublication } from "@/components/menu-publication";
 import {
@@ -107,6 +108,8 @@ export function PublicationCarte({
       <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         <TexteRiche texte={contenu} />
       </p>
+
+      <CitationApercu postId={id} />
 
       {kind === "sondage" && options.length > 0 && (
         <Sondage postId={id} options={options} connecte={connecte} />
