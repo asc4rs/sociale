@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { Check, Link2, MoreHorizontal, Quote } from "lucide-react";
 import { seDesabonner } from "@/app/actions/abonnements";
 import { bloquer, signaler } from "@/app/actions/moderation";
 import { masquerPublication } from "@/app/actions/masquage";
@@ -12,36 +13,19 @@ type Resultat = { error?: string; ok?: boolean };
 type Props = {
   postId: string;
   auteurId: string;
+  connecte: boolean;
+  estMienne: boolean;
 };
 
-function Option({
-  children,
-  onClick,
-  danger = false,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg px-3 py-2 text-left text-sm hover:bg-surface ${
-        danger ? "text-red-600" : ""
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+const classeOption = "rounded-lg px-3 py-2 text-left text-sm hover:bg-surface";
 
-export function MenuPublication({ postId, auteurId }: Props) {
+export function MenuPublication({ postId, auteurId, connecte, estMienne }: Props) {
   const router = useRouter();
   const racine = useRef<HTMLDivElement>(null);
   const [ouvert, setOuvert] = useState(false);
   const [signalement, setSignalement] = useState(false);
   const [raison, setRaison] = useState("");
+  const [copie, setCopie] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -84,6 +68,18 @@ export function MenuPublication({ postId, auteurId }: Props) {
     });
   }
 
+  function copierLien() {
+    navigator.clipboard
+      .writeText(`${window.location.origin}/publication/${postId}`)
+      .then(() => {
+        setCopie(true);
+        setTimeout(() => {
+          setCopie(false);
+          setOuvert(false);
+        }, 1200);
+      });
+  }
+
   return (
     <div ref={racine} className="relative">
       <button
@@ -100,19 +96,57 @@ export function MenuPublication({ postId, auteurId }: Props) {
         <div className="absolute right-0 top-full z-40 mt-2 flex w-72 flex-col gap-1 rounded-xl border border-border bg-background p-2 shadow-lg">
           {!signalement ? (
             <>
-              <Option onClick={() => setSignalement(true)}>Signaler</Option>
-              <Option onClick={() => lancer(() => masquerPublication(postId, "pas_interesse"))}>
-                Ce contenu ne m&apos;intéresse pas
-              </Option>
-              <Option onClick={() => lancer(() => seDesabonner(auteurId))}>
-                Se désabonner de ce compte
-              </Option>
-              <Option onClick={() => lancer(() => masquerPublication(postId, "masque"))}>
-                Masquer
-              </Option>
-              <Option danger onClick={() => lancer(() => bloquer(auteurId))}>
-                Bloquer
-              </Option>
+              {connecte && (
+                <Link href={`/citer/${postId}`} className={`${classeOption} flex items-center gap-2`}>
+                  <Quote size={16} aria-hidden="true" />
+                  Citer
+                </Link>
+              )}
+
+              <button type="button" onClick={copierLien} className={`${classeOption} flex items-center gap-2`}>
+                {copie ? <Check size={16} aria-hidden="true" /> : <Link2 size={16} aria-hidden="true" />}
+                {copie ? "Lien copié" : "Copier le lien"}
+              </button>
+
+              {connecte && !estMienne && (
+                <>
+                  <button type="button" onClick={() => setSignalement(true)} className={classeOption}>
+                    Signaler
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => lancer(() => masquerPublication(postId, "pas_interesse"))}
+                    className={classeOption}
+                  >
+                    Ce contenu ne m&apos;intéresse pas
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => lancer(() => seDesabonner(auteurId))}
+                    className={classeOption}
+                  >
+                    Se désabonner de ce compte
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => lancer(() => masquerPublication(postId, "masque"))}
+                    className={classeOption}
+                  >
+                    Masquer
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => lancer(() => bloquer(auteurId))}
+                    className={`${classeOption} text-red-600`}
+                  >
+                    Bloquer
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <div className="flex flex-col gap-2 p-1">
