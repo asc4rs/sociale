@@ -26,6 +26,7 @@ export function Composer() {
   const [contenu, setContenu] = useState("");
   const [type, setType] = useState<Type>("texte");
   const [options, setOptions] = useState<string[]>(["", ""]);
+  const [emojisOuverts, setEmojisOuverts] = useState(false);
   const [programmer, setProgrammer] = useState(false);
   const [dateProg, setDateProg] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function Composer() {
     const debut = el?.selectionStart ?? contenu.length;
     const fin = el?.selectionEnd ?? contenu.length;
     setContenu(contenu.slice(0, debut) + emoji + contenu.slice(fin));
+    setEmojisOuverts(false);
     requestAnimationFrame(() => {
       el?.focus();
       const pos = debut + emoji.length;
@@ -153,18 +155,32 @@ export function Composer() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1">
-        {EMOJIS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            aria-label={`Ajouter ${e}`}
-            onClick={() => ajouterEmoji(e)}
-            className="rounded-lg px-1.5 py-0.5 text-lg hover:bg-surface"
-          >
-            {e}
-          </button>
-        ))}
+      <div className="relative self-start">
+        <button
+          type="button"
+          aria-label="Ajouter un émoji"
+          aria-expanded={emojisOuverts}
+          onClick={() => setEmojisOuverts(!emojisOuverts)}
+          className="rounded-xl border border-border px-3 py-1.5 text-base hover:bg-surface"
+        >
+          😀
+        </button>
+
+        {emojisOuverts && (
+          <div className="absolute left-0 top-full z-40 mt-2 grid w-64 grid-cols-8 gap-1 rounded-xl border border-border bg-background p-2 shadow-lg">
+            {EMOJIS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                aria-label={`Ajouter ${e}`}
+                onClick={() => ajouterEmoji(e)}
+                className="rounded-lg py-0.5 text-lg hover:bg-surface"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm">
