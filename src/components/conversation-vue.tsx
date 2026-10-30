@@ -392,7 +392,7 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
 
                   {ouvert && (
                     <div
-                      className={`absolute bottom-full z-30 mb-2 w-64 rounded-2xl border border-border bg-background p-2 shadow-2xl ${
+                      className={`absolute bottom-full z-30 mb-2 w-72 rounded-2xl border border-border bg-background p-2 shadow-2xl ${
                         m.estMien ? "right-0" : "left-0"
                       }`}
                     >
@@ -404,7 +404,7 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
                             aria-label={`Réagir avec ${e}`}
                             onClick={() => basculerReaction(m.id, e)}
                             disabled={pending}
-                            className="rounded-full p-1.5 text-xl hover:bg-surface disabled:opacity-50"
+                            className="rounded-full p-1 text-lg hover:bg-surface disabled:opacity-50"
                           >
                             {e}
                           </button>
