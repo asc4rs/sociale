@@ -91,7 +91,12 @@ export function PublicationCarte({
           </Link>
         </ApercuProfil>
 
-        {connecte && !estMienne && <MenuPublication postId={id} auteurId={auteurId} />}
+        <MenuPublication
+          postId={id}
+          auteurId={auteurId}
+          connecte={connecte}
+          estMienne={estMienne}
+        />
       </div>
 
       {kind === "question" && (
