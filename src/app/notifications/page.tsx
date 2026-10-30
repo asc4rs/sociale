@@ -15,9 +15,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { Avatar } from "@/components/avatar";
 import { BoutonToutLire } from "@/components/bouton-tout-lire";
 
-type Acteur = { username: string; display_name: string };
+type Acteur = { username: string; display_name: string; avatar_url: string | null };
 
 type Notification = {
   id: string;
@@ -79,7 +80,6 @@ export default function NotificationsPage(props: Props) {
 }
 
 async function ContenuNotifications({ searchParams }: Props) {
-  // Indique à Next.js que la page se calcule à chaque visite.
   await connection();
 
   const { onglet } = await searchParams;
@@ -95,7 +95,7 @@ async function ContenuNotifications({ searchParams }: Props) {
   const base = supabase
     .from("notifications")
     .select(
-      "id, type, read, created_at, post_id, comment_id, detail, actor:profiles!notifications_actor_id_fkey(username, display_name)",
+      "id, type, read, created_at, post_id, comment_id, detail, actor:profiles!notifications_actor_id_fkey(username, display_name, avatar_url)",
     )
     .eq("recipient_id", user.id);
 
@@ -133,6 +133,7 @@ async function ContenuNotifications({ searchParams }: Props) {
           {notifications.map((n) => {
             const acteur = Array.isArray(n.actor) ? n.actor[0] : n.actor;
             const pseudo = acteur?.username ?? "";
+            const nom = acteur?.display_name ?? "Quelqu'un";
             const Icone = ICONES[n.type] ?? Bell;
             const date = new Date(n.created_at).toLocaleString("fr-FR", {
               dateStyle: "short",
@@ -147,13 +148,14 @@ async function ContenuNotifications({ searchParams }: Props) {
                     n.read ? "" : "font-semibold"
                   }`}
                 >
-                  <span className="mt-0.5 shrink-0">
-                    <Icone size={20} aria-hidden="true" />
-                  </span>
+                  <Avatar url={acteur?.avatar_url} nom={nom} />
                   <div className="min-w-0">
-                    <p className="text-sm">
-                      <span className="font-semibold">{acteur?.display_name ?? "Quelqu'un"}</span>{" "}
-                      {TEXTES[n.type] ?? "t'a envoyé une notification"}
+                    <p className="flex items-center gap-2 text-sm">
+                      <Icone size={16} aria-hidden="true" className="shrink-0 text-muted" />
+                      <span>
+                        <span className="font-semibold">{nom}</span>{" "}
+                        {TEXTES[n.type] ?? "t'a envoyé une notification"}
+                      </span>
                     </p>
                     {n.detail && (
                       <p className="mt-2 whitespace-pre-wrap text-sm">{n.detail}</p>

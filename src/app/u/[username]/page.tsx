@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
-import { BoutonSuivreProfil } from "@/components/bouton-suivre-profil";
+import { ActionsProfil } from "@/components/actions-profil";
 import { PublicationCarte } from "@/components/publication-carte";
 import type { CommentaireAffiche } from "@/components/section-commentaires";
 import type { OptionSondage } from "@/components/sondage";
