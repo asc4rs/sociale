@@ -7,7 +7,11 @@ import { ConversationVue, type MessageAffiche } from "@/components/conversation-
 
 type Auteur = { username: string; display_name: string };
 
-type Membre = { user_id: string; profiles: Auteur | Auteur[] | null };
+type Membre = {
+  user_id: string;
+  last_read_at: string;
+  profiles: Auteur | Auteur[] | null;
+};
 
 type MessageBrut = {
   id: string;
@@ -62,7 +66,7 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
 
   const { data: membresData } = await supabase
     .from("conversation_members")
-    .select("user_id, profiles(username, display_name)")
+    .select("user_id, last_read_at, profiles(username, display_name)")
     .eq("conversation_id", id);
 
   const membres = (membresData ?? []) as unknown as Membre[];
@@ -81,7 +85,9 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
     .order("created_at", { ascending: true })
     .limit(200);
 
-  const messages: MessageAffiche[] = ((messagesData ?? []) as unknown as MessageBrut[]).map((m) => {
+  const bruts = (messagesData ?? []) as unknown as MessageBrut[];
+
+  const messages: MessageAffiche[] = bruts.map((m) => {
     const auteur = unObjet(m.profiles);
     return {
       id: m.id,
@@ -97,6 +103,33 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
     };
   });
 
+  // Indicateur de lecture : seulement pour les conversations à deux.
+  const mesMessages = bruts.filter((m) => m.author_id === user.id && !m.deleted);
+  const dernierMoi = mesMessages.length > 0 ? mesMessages[mesMessages.length - 1] : null;
+
+  const dernieresLectures = membres
+    .filter((m) => m.user_id !== user.id)
+    .map((m) => m.last_read_at)
+    .filter((d): d is string => !!d);
+
+  const derniereLecture = dernieresLectures.reduce<string | null>(
+    (max, d) => (max === null || d > max ? d : max),
+    null,
+  );
+
+  let statut: string | null = null;
+  if (!conv?.is_group && dernierMoi) {
+    if (derniereLecture && derniereLecture >= dernierMoi.created_at) {
+      const heure = new Date(derniereLecture).toLocaleString("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+      statut = `Vu · ${heure}`;
+    } else {
+      statut = "Envoyé";
+    }
+  }
+
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
       <Link href="/messages" className="text-sm text-muted hover:underline">
@@ -107,6 +140,12 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
       <div className="mt-6">
         <ConversationVue conversationId={id} messages={messages} />
       </div>
+
+      {statut && (
+        <p className="mt-3 text-right text-xs text-muted" aria-live="polite">
+          {statut}
+        </p>
+      )}
     </div>
   );
 }
