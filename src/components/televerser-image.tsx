@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -25,18 +25,11 @@ const REGLES = {
 } as const;
 
 // Lit la largeur et la hauteur réelles de l'image choisie.
-function lireDimensions(fichier: File): Promise<{ w: number; h: number }> {
+function lireDimensions(url: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(fichier);
     const img = new Image();
-    img.onload = () => {
-      resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("lecture"));
-    };
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => reject(new Error("lecture"));
     img.src = url;
   });
 }
@@ -44,40 +37,67 @@ function lireDimensions(fichier: File): Promise<{ w: number; h: number }> {
 export function TeleverserImage({ champ, libelle }: Props) {
   const router = useRouter();
   const entree = useRef<HTMLInputElement>(null);
+  const [fichier, setFichier] = useState<File | null>(null);
+  const [apercu, setApercu] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Libère la mémoire de l'aperçu quand il change ou disparaît.
+  useEffect(() => {
+    return () => {
+      if (apercu) URL.revokeObjectURL(apercu);
+    };
+  }, [apercu]);
+
   async function choisir(e: React.ChangeEvent<HTMLInputElement>) {
-    const fichier = e.target.files?.[0];
+    const choix = e.target.files?.[0];
     e.target.value = "";
-    if (!fichier) return;
+    if (!choix) return;
 
     setMessage(null);
 
-    if (!TYPES.includes(fichier.type)) {
+    if (!TYPES.includes(choix.type)) {
       setMessage("Format non accepté (JPG, PNG, WebP ou GIF).");
       return;
     }
-    if (fichier.size > TAILLE_MAX) {
+    if (choix.size > TAILLE_MAX) {
       setMessage("Image trop lourde (2 Mo maximum).");
       return;
     }
 
+    const url = URL.createObjectURL(choix);
     let dimensions;
     try {
-      dimensions = await lireDimensions(fichier);
+      dimensions = await lireDimensions(url);
     } catch {
+      URL.revokeObjectURL(url);
       setMessage("Impossible de lire cette image. Essaie un autre fichier.");
       return;
     }
 
     const regle = REGLES[champ];
     if (!regle.verifier(dimensions.w, dimensions.h)) {
+      URL.revokeObjectURL(url);
       setMessage(
         `Dimensions incorrectes (${dimensions.w} × ${dimensions.h} px). ${regle.texte}`,
       );
       return;
     }
+
+    // Image valide : on affiche l'aperçu, sans rien envoyer.
+    setApercu(url);
+    setFichier(choix);
+  }
+
+  function annuler() {
+    setApercu(null);
+    setFichier(null);
+    setMessage(null);
+  }
+
+  function confirmer() {
+    if (!fichier) return;
+    setMessage(null);
 
     startTransition(async () => {
       const supabase = createClient();
@@ -107,6 +127,7 @@ export function TeleverserImage({ champ, libelle }: Props) {
         setMessage("Enregistrement impossible.");
         return;
       }
+      annuler();
       router.refresh();
     });
   }
@@ -133,8 +154,11 @@ export function TeleverserImage({ champ, libelle }: Props) {
     });
   }
 
+  const formeApercu =
+    champ === "avatar_url" ? "h-24 w-24 rounded-full" : "h-24 w-72 rounded-xl";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2">
       <input
         ref={entree}
         type="file"
@@ -142,25 +166,58 @@ export function TeleverserImage({ champ, libelle }: Props) {
         onChange={choisir}
         className="hidden"
       />
-      <button
-        type="button"
-        onClick={() => entree.current?.click()}
-        disabled={pending}
-        className="rounded-xl border border-border px-3 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
-      >
-        {pending ? "Envoi..." : libelle}
-      </button>
-      <button
-        type="button"
-        onClick={supprimer}
-        disabled={pending}
-        className="rounded-xl px-3 py-1.5 text-sm text-red-600 hover:bg-surface disabled:opacity-50"
-      >
-        Supprimer
-      </button>
-      <p className="w-full text-xs text-muted">{REGLES[champ].texte}</p>
+
+      {apercu ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold">Aperçu</p>
+          <img
+            src={apercu}
+            alt="Aperçu de l'image choisie"
+            className={`${formeApercu} object-cover border border-border`}
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={confirmer}
+              disabled={pending}
+              className="rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              {pending ? "Envoi..." : "Confirmer"}
+            </button>
+            <button
+              type="button"
+              onClick={annuler}
+              disabled={pending}
+              className="rounded-xl border border-border px-4 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => entree.current?.click()}
+            disabled={pending}
+            className="rounded-xl border border-border px-3 py-1.5 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+          >
+            {libelle}
+          </button>
+          <button
+            type="button"
+            onClick={supprimer}
+            disabled={pending}
+            className="rounded-xl px-3 py-1.5 text-sm text-red-600 hover:bg-surface disabled:opacity-50"
+          >
+            Supprimer
+          </button>
+          <p className="w-full text-xs text-muted">{REGLES[champ].texte}</p>
+        </div>
+      )}
+
       {message && (
-        <p role="alert" className="w-full text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-600">
           {message}
         </p>
       )}
