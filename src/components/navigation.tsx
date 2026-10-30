@@ -19,13 +19,14 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CompteurNotifications } from "@/components/compteur-notifications";
+import { CompteurMessages } from "@/components/compteur-messages";
 import { Logo } from "./logo";
 
 type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  compteur?: boolean;
+  compteur?: "notifications" | "messages";
   prive?: boolean;
 };
 
@@ -34,8 +35,8 @@ const TOUS: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/explorer", label: "Explorer", icon: Compass },
   { href: "/recherche", label: "Recherche", icon: Search },
-  { href: "/notifications", label: "Notifications", icon: Bell, compteur: true },
-  { href: "/messages", label: "Messages", icon: Mail },
+  { href: "/notifications", label: "Notifications", icon: Bell, compteur: "notifications" },
+  { href: "/messages", label: "Messages", icon: Mail, compteur: "messages" },
   { href: "/demandes", label: "Demandes", icon: UserPlus, prive: true },
   { href: "/favoris", label: "Favoris", icon: Bookmark },
   { href: "/profil", label: "Profil", icon: User },
@@ -45,8 +46,8 @@ const TOUS: NavItem[] = [
 // Barre du bas, sur téléphone.
 const BAS: NavItem[] = [
   { href: "/", label: "Accueil", icon: Home },
-  { href: "/notifications", label: "Notifications", icon: Bell, compteur: true },
-  { href: "/messages", label: "Messages", icon: Mail },
+  { href: "/notifications", label: "Notifications", icon: Bell, compteur: "notifications" },
+  { href: "/messages", label: "Messages", icon: Mail, compteur: "messages" },
   { href: "/profil", label: "Profil", icon: User },
 ];
 
@@ -58,7 +59,6 @@ const MENU: NavItem[] = [
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
-// Indique si le compte connecté est privé (la page Demandes n'existe que dans ce cas).
 function useEstPrive() {
   const pathname = usePathname();
   const [prive, setPrive] = useState(false);
@@ -103,9 +103,7 @@ function NavLink({ item, variante }: { item: NavItem; variante: Variante }) {
     menu: "flex items-center gap-3 rounded-xl px-3 py-3 text-base hover:bg-surface",
   }[variante];
 
-  const etat = actif
-    ? "font-bold text-foreground"
-    : "text-muted hover:text-foreground";
+  const etat = actif ? "font-bold text-foreground" : "text-muted hover:text-foreground";
 
   return (
     <Link
@@ -115,14 +113,14 @@ function NavLink({ item, variante }: { item: NavItem; variante: Variante }) {
     >
       <span className="relative flex">
         <Icone size={22} aria-hidden="true" />
-        {item.compteur && <CompteurNotifications />}
+        {item.compteur === "notifications" && <CompteurNotifications />}
+        {item.compteur === "messages" && <CompteurMessages />}
       </span>
       <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
-// Menu de gauche, sur ordinateur.
 export function SidebarNav() {
   const prive = useEstPrive();
 
@@ -140,7 +138,6 @@ export function SidebarNav() {
   );
 }
 
-// Barre du bas, sur téléphone uniquement.
 export function BottomNav() {
   return (
     <nav
@@ -154,13 +151,11 @@ export function BottomNav() {
   );
 }
 
-// En-tête et menu à trois barres, sur téléphone uniquement.
 export function BarreMobile() {
   const pathname = usePathname();
   const prive = useEstPrive();
   const [ouvert, setOuvert] = useState(false);
 
-  // Le menu se ferme à chaque changement de page.
   useEffect(() => {
     setOuvert(false);
   }, [pathname]);
@@ -181,11 +176,7 @@ export function BarreMobile() {
           Sociale
         </Link>
 
-        <Link
-          href="/recherche"
-          aria-label="Rechercher"
-          className="rounded-xl p-2 hover:bg-surface"
-        >
+        <Link href="/recherche" aria-label="Rechercher" className="rounded-xl p-2 hover:bg-surface">
           <Search size={22} aria-hidden="true" />
         </Link>
       </header>

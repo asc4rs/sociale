@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 import { BoutonToutLire } from "@/components/bouton-tout-lire";
+import { NotificationLigne } from "@/components/notification-ligne";
 
 type Acteur = { username: string; display_name: string; avatar_url: string | null };
 
@@ -142,8 +143,10 @@ async function ContenuNotifications({ searchParams }: Props) {
 
             return (
               <li key={n.id}>
-                <Link
+                <NotificationLigne
+                  id={n.id}
                   href={lienPour(n, pseudo)}
+                  estLue={n.read}
                   className={`flex gap-3 rounded-xl border border-border p-4 hover:bg-surface ${
                     n.read ? "" : "font-semibold"
                   }`}
@@ -157,12 +160,10 @@ async function ContenuNotifications({ searchParams }: Props) {
                         {TEXTES[n.type] ?? "t'a envoyé une notification"}
                       </span>
                     </p>
-                    {n.detail && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{n.detail}</p>
-                    )}
+                    {n.detail && <p className="mt-2 whitespace-pre-wrap text-sm">{n.detail}</p>}
                     <p className="mt-1 text-xs text-muted">{date}</p>
                   </div>
-                </Link>
+                </NotificationLigne>
               </li>
             );
           })}

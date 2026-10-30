@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ConversationVue, type MessageAffiche } from "@/components/conversation-vue";
+import { MarquerConversationLue } from "@/components/marquer-conversation-lue";
 
 type Auteur = { username: string; display_name: string };
 
@@ -36,7 +37,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 }
 
 async function ContenuConversation({ params }: { params: Promise<{ id: string }> }) {
-  // Indique à Next.js que la page se calcule à chaque visite.
   await connection();
 
   const { id } = await params;
@@ -48,7 +48,6 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
 
   if (!user) redirect("/connexion");
 
-  // Seuls les membres peuvent ouvrir la conversation.
   const { data: moi } = await supabase
     .from("conversation_members")
     .select("conversation_id")
@@ -136,6 +135,8 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
         ← Messages
       </Link>
       <h1 className="mt-2 text-2xl font-bold">{titre}</h1>
+
+      <MarquerConversationLue conversationId={id} />
 
       <div className="mt-6">
         <ConversationVue conversationId={id} messages={messages} />
