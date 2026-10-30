@@ -103,28 +103,37 @@ export function EnteteConversation({
   }
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <Link href="/messages" aria-label="Retour aux messages" className="shrink-0 rounded-xl p-2 hover:bg-surface">
-          <ArrowLeft size={20} aria-hidden="true" />
+    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4">
+      <div className="flex min-w-0 items-center gap-4">
+        <Link
+          href="/messages"
+          aria-label="Retour aux messages"
+          className="shrink-0 rounded-full p-2 hover:bg-surface md:hidden"
+        >
+          <ArrowLeft size={22} aria-hidden="true" />
         </Link>
 
-        <Avatar url={autre?.avatarUrl ?? null} nom={autre?.nom ?? titre} />
+        <Avatar url={autre?.avatarUrl ?? null} nom={autre?.nom ?? titre} taille="md" />
 
         <div className="min-w-0">
-          <p className="truncate font-bold">{autre?.nom ?? titre}</p>
+          <p className="truncate text-lg font-bold leading-tight">{autre?.nom ?? titre}</p>
+
+          {autre && <p className="truncate text-sm text-muted">@{autre.username}</p>}
+
           {autre && (
-            <p className="truncate text-xs text-muted">
-              @{autre.username} · Rejoint Sociale en {autre.rejointLe} ·{" "}
+            <p className="mt-1 truncate text-xs text-muted">
+              Rejoint Sociale en {autre.rejointLe} ·{" "}
               <span className="font-semibold text-foreground">{autre.abonnes}</span> abonnés ·{" "}
               <span className="font-semibold text-foreground">{autre.abonnements}</span> abonnements
             </p>
           )}
+
           {estGroupe && (
-            <p className="truncate text-xs text-muted">Groupe · {nombreMembres} membres</p>
+            <p className="mt-1 text-xs text-muted">Groupe · {nombreMembres} membres</p>
           )}
+
           {autre && (
-            <Link href={`/u/${autre.username}`} className="text-xs underline">
+            <Link href={`/u/${autre.username}`} className="mt-1 inline-block text-sm underline">
               Voir le profil
             </Link>
           )}
@@ -137,32 +146,32 @@ export function EnteteConversation({
           aria-label="Options de la conversation"
           aria-expanded={ouvert}
           onClick={() => setOuvert(!ouvert)}
-          className="rounded-xl p-2 hover:bg-surface"
+          className="rounded-full p-2 hover:bg-surface"
         >
-          <MoreHorizontal size={20} aria-hidden="true" />
+          <MoreHorizontal size={22} aria-hidden="true" />
         </button>
 
         {ouvert && (
-          <div className="absolute right-0 top-full z-40 mt-2 flex w-72 flex-col gap-1 rounded-xl border border-border bg-background p-2 shadow-lg">
-            <p className="px-2 pt-1 text-xs font-semibold text-muted">Disparition des messages</p>
-            <div className="flex flex-col">
-              {OPTIONS_DISPARITION.map((o) => (
-                <button
-                  key={o.libelle}
-                  type="button"
-                  disabled={pending}
-                  onClick={() => changerDuree(o.valeur)}
-                  aria-pressed={duree === o.valeur}
-                  className={`rounded-lg px-3 py-2 text-left text-sm hover:bg-surface ${
-                    duree === o.valeur ? "font-bold" : ""
-                  }`}
-                >
-                  {duree === o.valeur ? "✓ " : ""}
-                  {o.libelle}
-                </button>
-              ))}
-            </div>
-            <p className="px-2 pb-1 text-xs text-muted">
+          <div className="absolute right-0 top-full z-40 mt-2 flex w-72 flex-col gap-1 rounded-2xl border border-border bg-background p-2 shadow-2xl">
+            <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">
+              Disparition des messages
+            </p>
+            {OPTIONS_DISPARITION.map((o) => (
+              <button
+                key={o.libelle}
+                type="button"
+                disabled={pending}
+                onClick={() => changerDuree(o.valeur)}
+                aria-pressed={duree === o.valeur}
+                className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm hover:bg-surface ${
+                  duree === o.valeur ? "font-bold" : ""
+                }`}
+              >
+                {o.libelle}
+                {duree === o.valeur && <span aria-hidden="true">✓</span>}
+              </button>
+            ))}
+            <p className="px-3 pb-2 text-xs text-muted">
               Les messages plus anciens que ce délai ne sont plus affichés.
             </p>
 
@@ -172,9 +181,9 @@ export function EnteteConversation({
               type="button"
               disabled={pending}
               onClick={viderMesMessages}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-surface"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-red-600 hover:bg-surface"
             >
-              <Trash2 size={16} aria-hidden="true" />
+              <Trash2 size={18} aria-hidden="true" />
               Supprimer tous mes messages
             </button>
 
@@ -183,14 +192,14 @@ export function EnteteConversation({
                 type="button"
                 disabled={pending}
                 onClick={bloquerCompte}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-surface"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-red-600 hover:bg-surface"
               >
-                <Ban size={16} aria-hidden="true" />
+                <Ban size={18} aria-hidden="true" />
                 Bloquer {autre.nom}
               </button>
             )}
 
-            {message && <p className="px-2 text-sm text-red-600">{message}</p>}
+            {message && <p className="px-3 pb-2 text-sm text-red-600">{message}</p>}
           </div>
         )}
       </div>
