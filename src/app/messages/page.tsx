@@ -15,7 +15,13 @@ type Ligne = {
   conversations: Conversation | Conversation[] | null;
 };
 type Membre = { conversation_id: string; user_id: string; profiles: Profil | Profil[] | null };
-type MessageRecent = { conversation_id: string; created_at: string; author_id: string };
+type MessageRecent = {
+  conversation_id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  deleted: boolean;
+};
 type Suggestion = { id: string; username: string; display_name: string; avatar_url: string | null };
 type Compte = { id: string; username: string; display_name: string; avatar_url: string | null };
 
@@ -26,6 +32,18 @@ type Props = {
 function unObjet<T>(valeur: T | T[] | null | undefined): T | null {
   if (!valeur) return null;
   return Array.isArray(valeur) ? (valeur[0] ?? null) : valeur;
+}
+
+// Temps écoulé court : « 51 min », « 2 h », « Hier », puis la date.
+function tempsEcoule(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "maintenant";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h`;
+  if (h < 48) return "Hier";
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
 export default function MessagesPage(props: Props) {
@@ -70,7 +88,7 @@ async function ContenuMessages({ searchParams }: Props) {
         .in("conversation_id", ids),
       supabase
         .from("messages")
-        .select("conversation_id, created_at, author_id")
+        .select("conversation_id, content, created_at, author_id, deleted")
         .in("conversation_id", ids)
         .eq("deleted", false)
         .order("created_at", { ascending: false })
@@ -86,9 +104,7 @@ async function ContenuMessages({ searchParams }: Props) {
   }
 
   const groupes = new Set(
-    lignes
-      .filter((l) => unObjet(l.conversations)?.is_group)
-      .map((l) => l.conversation_id),
+    lignes.filter((l) => unObjet(l.conversations)?.is_group).map((l) => l.conversation_id),
   );
 
   const toutes = lignes
@@ -96,13 +112,17 @@ async function ContenuMessages({ searchParams }: Props) {
       const conv = unObjet(l.conversations);
       if (!conv) return null;
 
-      const autres = membres
-        .filter((m) => m.conversation_id === conv.id && m.user_id !== user.id)
-        .map((m) => unObjet(m.profiles)?.display_name ?? "Inconnu");
+      const autresMembres = membres.filter(
+        (m) => m.conversation_id === conv.id && m.user_id !== user.id,
+      );
+      const autres = autresMembres.map((m) => unObjet(m.profiles)?.display_name ?? "Inconnu");
 
       const titre = conv.is_group
         ? (conv.name ?? (autres.join(", ") || "Groupe"))
         : (autres[0] ?? "Conversation");
+
+      // Photo : celle de l'autre personne (ou une photo de groupe, sinon l'initiale).
+      const profilAutre = !conv.is_group ? unObjet(autresMembres[0]?.profiles) : null;
 
       const last = dernier.get(conv.id);
       const nonLu =
@@ -110,12 +130,19 @@ async function ContenuMessages({ searchParams }: Props) {
         last.author_id !== user.id &&
         new Date(last.created_at) > new Date(l.last_read_at);
 
+      const apercu = last
+        ? `${last.author_id === user.id ? "Vous : " : ""}${last.content || "Pièce jointe"}`
+        : "Aucun message";
+
       return {
         id: conv.id,
         titre,
         groupe: conv.is_group,
         nonLu,
         activite: last?.created_at ?? conv.created_at,
+        apercu,
+        photo: profilAutre?.avatar_url ?? null,
+        initiale: titre,
       };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null)
@@ -130,7 +157,6 @@ async function ContenuMessages({ searchParams }: Props) {
       (q === "" || c.titre.toLowerCase().includes(q.toLowerCase())),
   );
 
-  // Comptes que je suis : liste de la fenêtre « Nouveau message ».
   const { data: suivisData } = await supabase
     .from("follows")
     .select("following_id")
@@ -150,7 +176,6 @@ async function ContenuMessages({ searchParams }: Props) {
     comptes = (profilsSuivis ?? []) as Compte[];
   }
 
-  // Suggestions : comptes que je suis, avec qui je n'ai pas encore de conversation privée.
   const dejaEcrit = new Set(
     membres
       .filter((m) => m.user_id !== user.id && !groupes.has(m.conversation_id))
@@ -243,24 +268,37 @@ async function ContenuMessages({ searchParams }: Props) {
         </Link>
       </nav>
 
-      <ul className="mt-6 flex flex-col gap-3">
-        {visibles.length === 0 && (
-          <li className="text-muted">Aucune conversation ne correspond.</li>
-        )}
+      <ul className="mt-6 flex flex-col gap-2">
+        {visibles.length === 0 && <li className="text-muted">Aucune conversation ne correspond.</li>}
 
         {visibles.map((c) => (
           <li key={c.id}>
             <Link
               href={`/messages/${c.id}`}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border p-4 hover:bg-surface"
+              className="flex items-center gap-3 rounded-2xl p-3 hover:bg-surface"
             >
-              <span className={`min-w-0 truncate ${c.nonLu ? "font-bold" : ""}`}>
-                {c.titre}
-                {c.groupe && <span className="ml-2 text-xs text-muted">Groupe</span>}
+              <Avatar url={c.photo} nom={c.initiale} taille="md" />
+
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className={`truncate ${c.nonLu ? "font-bold" : "font-semibold"}`}>
+                    {c.titre}
+                    {c.groupe && <span className="ml-2 text-xs font-normal text-muted">Groupe</span>}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted">{tempsEcoule(c.activite)}</span>
+                </span>
+
+                <span className="mt-0.5 flex items-center justify-between gap-2">
+                  <span
+                    className={`truncate text-sm ${c.nonLu ? "font-semibold text-foreground" : "text-muted"}`}
+                  >
+                    {c.apercu}
+                  </span>
+                  {c.nonLu && (
+                    <span aria-label="Non lu" className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" />
+                  )}
+                </span>
               </span>
-              {c.nonLu && (
-                <span aria-label="Non lu" className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" />
-              )}
             </Link>
           </li>
         ))}
