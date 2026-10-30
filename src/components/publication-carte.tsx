@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Clock, MessageCircle, Trash2 } from "lucide-react";
 import { supprimerPublication } from "@/app/actions/publications";
 import { ApercuProfil } from "@/components/apercu-profil";
+import { Avatar } from "@/components/avatar";
 import { BoutonLike } from "@/components/bouton-like";
 import { BoutonsPublication } from "@/components/boutons-publication";
 import { EnregistrerVue } from "@/components/enregistrer-vue";
@@ -23,6 +24,7 @@ type Props = {
   auteurId: string;
   auteurNom: string;
   auteurPseudo: string;
+  avatarUrl?: string | null;
   estMienne: boolean;
   connecte: boolean;
   nombreLikes: number;
@@ -46,6 +48,7 @@ export function PublicationCarte({
   auteurId,
   auteurNom,
   auteurPseudo,
+  avatarUrl = null,
   estMienne,
   connecte,
   nombreLikes,
@@ -78,12 +81,7 @@ export function PublicationCarte({
       <div className="flex items-start justify-between gap-2">
         <ApercuProfil auteurId={auteurId}>
           <Link href={`/u/${auteurPseudo}`} className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface text-sm font-bold"
-            >
-              {auteurNom.charAt(0).toUpperCase()}
-            </span>
+            <Avatar url={avatarUrl} nom={auteurNom} />
             <span>
               <span className="block font-semibold hover:underline">{auteurNom}</span>
               <span className="block text-sm text-muted">@{auteurPseudo}</span>
