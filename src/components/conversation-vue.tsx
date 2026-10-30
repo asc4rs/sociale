@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Image as ImageIcon, Paperclip, Plus, Send, Smile, Trash2, Video, X } from "lucide-react";
+import { Image as ImageIcon, Paperclip, Plus, Send, Smile, SmilePlus, Trash2, Video, X } from "lucide-react";
 import { envoyerDansConversation, supprimerMonMessage } from "@/app/actions/conversation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -19,6 +19,8 @@ export type MessageAffiche = {
 
 type Genre = "image" | "video" | "fichier";
 type Piece = { file: File; genre: Genre; apercu: string | null };
+type Reaction = { message_id: string; user_id: string; emoji: string };
+type ReactionsMap = Record<string, Record<string, { count: number; moi: boolean }>>;
 
 type Props = {
   conversationId: string;
@@ -31,6 +33,8 @@ const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😎", "🤔", "👍", "👏",
   "🔥", "🎉", "❤️", "😢", "😡", "🙏", "✨", "💯",
 ];
+
+const REACTIONS_RAPIDES = ["❤️", "😂", "😮", "😢", "😡", "👍"];
 
 const ACCEPT: Record<Genre, string> = {
   image: "image/jpeg,image/png,image/webp,image/gif",
@@ -92,7 +96,49 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
   const [plusOuvert, setPlusOuvert] = useState(false);
   const [emojisOuverts, setEmojisOuverts] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<ReactionsMap>({});
+  const [versionReactions, setVersionReactions] = useState(0);
+  const [selecteur, setSelecteur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const idsKey = messages.map((m) => m.id).join(",");
+
+  // Charge les réactions des messages affichés, puis les actualise toutes les 15 secondes.
+  useEffect(() => {
+    let annule = false;
+
+    async function charger() {
+      const ids = idsKey ? idsKey.split(",") : [];
+      if (ids.length === 0) {
+        setReactions({});
+        return;
+      }
+
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("message_reactions")
+        .select("message_id, user_id, emoji")
+        .in("message_id", ids);
+
+      if (annule) return;
+
+      const map: ReactionsMap = {};
+      for (const r of (data ?? []) as Reaction[]) {
+        if (!map[r.message_id]) map[r.message_id] = {};
+        if (!map[r.message_id][r.emoji]) map[r.message_id][r.emoji] = { count: 0, moi: false };
+        map[r.message_id][r.emoji].count += 1;
+        if (r.user_id === moiId) map[r.message_id][r.emoji].moi = true;
+      }
+      setReactions(map);
+    }
+
+    charger();
+    const minuteur = setInterval(charger, 15000);
+    return () => {
+      annule = true;
+      clearInterval(minuteur);
+    };
+  }, [idsKey, moiId, versionReactions]);
 
   useEffect(() => {
     const el = liste.current;
@@ -104,6 +150,38 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
       if (piece?.apercu) URL.revokeObjectURL(piece.apercu);
     };
   }, [piece]);
+
+  function basculerReaction(messageId: string, emoji: string) {
+    setSelecteur(null);
+    setErreur(null);
+    const dejaMoi = !!reactions[messageId]?.[emoji]?.moi;
+    const supabase = createClient();
+
+    startTransition(async () => {
+      let erreurRequete = null;
+
+      if (dejaMoi) {
+        const { error } = await supabase
+          .from("message_reactions")
+          .delete()
+          .eq("message_id", messageId)
+          .eq("user_id", moiId)
+          .eq("emoji", emoji);
+        erreurRequete = error;
+      } else {
+        const { error } = await supabase
+          .from("message_reactions")
+          .insert({ message_id: messageId, user_id: moiId, emoji });
+        erreurRequete = error;
+      }
+
+      if (erreurRequete) {
+        setErreur("Réaction impossible. Réessaie.");
+        return;
+      }
+      setVersionReactions((v) => v + 1);
+    });
+  }
 
   function ouvrirChoix(genre: Genre) {
     if (!entree.current) return;
@@ -207,53 +285,108 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
             <li className="py-10 text-center text-base text-muted">Aucun message pour le moment.</li>
           )}
 
-          {messages.map((m) => (
-            <li key={m.id} className={`flex ${m.estMien ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`group max-w-[75%] rounded-3xl px-4 py-3 shadow-sm md:max-w-[60%] ${
-                  m.estMien
-                    ? "rounded-br-md bg-accent text-accent-foreground"
-                    : "rounded-bl-md border border-border bg-surface"
-                }`}
-              >
-                {!m.estMien && (
-                  <p className="mb-1 text-sm font-semibold">{m.auteurNom}</p>
-                )}
+          {messages.map((m) => {
+            const chips = Object.entries(reactions[m.id] ?? {});
 
-                {m.mediaUrl && m.mediaKind && (
-                  <div className="mb-2">
-                    <Media url={m.mediaUrl} kind={m.mediaKind} />
-                  </div>
-                )}
-
-                {m.contenu && (
-                  <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
-                    {m.contenu}
-                  </p>
-                )}
-
+            return (
+              <li key={m.id} className={`flex flex-col ${m.estMien ? "items-end" : "items-start"}`}>
                 <div
-                  className={`mt-1 flex items-center justify-end gap-2 text-xs ${
-                    m.estMien ? "opacity-70" : "text-muted"
+                  className={`group relative max-w-[75%] rounded-3xl px-4 py-3 shadow-sm md:max-w-[60%] ${
+                    m.estMien
+                      ? "rounded-br-md bg-accent text-accent-foreground"
+                      : "rounded-bl-md border border-border bg-surface"
                   }`}
                 >
-                  <span>{m.date}</span>
-                  {m.estMien && (
+                  {!m.estMien && <p className="mb-1 text-sm font-semibold">{m.auteurNom}</p>}
+
+                  {m.mediaUrl && m.mediaKind && (
+                    <div className="mb-2">
+                      <Media url={m.mediaUrl} kind={m.mediaKind} />
+                    </div>
+                  )}
+
+                  {m.contenu && (
+                    <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
+                      {m.contenu}
+                    </p>
+                  )}
+
+                  <div
+                    className={`mt-1 flex items-center justify-end gap-2 text-xs ${
+                      m.estMien ? "opacity-70" : "text-muted"
+                    }`}
+                  >
+                    <span>{m.date}</span>
+
                     <button
                       type="button"
-                      onClick={() => supprimer(m.id)}
-                      disabled={pending}
-                      aria-label="Supprimer ce message"
-                      title="Supprimer"
-                      className="rounded-full p-1 text-current hover:bg-black/10 disabled:opacity-50"
+                      onClick={() => setSelecteur(selecteur === m.id ? null : m.id)}
+                      aria-label="Réagir à ce message"
+                      aria-expanded={selecteur === m.id}
+                      title="Réagir"
+                      className="rounded-full p-1 text-current opacity-100 hover:bg-black/10 md:opacity-0 md:group-hover:opacity-100"
                     >
-                      <Trash2 size={14} aria-hidden="true" />
+                      <SmilePlus size={14} aria-hidden="true" />
                     </button>
+
+                    {m.estMien && (
+                      <button
+                        type="button"
+                        onClick={() => supprimer(m.id)}
+                        disabled={pending}
+                        aria-label="Supprimer ce message"
+                        title="Supprimer"
+                        className="rounded-full p-1 text-current hover:bg-black/10 disabled:opacity-50"
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+
+                  {selecteur === m.id && (
+                    <div
+                      className={`absolute bottom-full z-20 mb-2 flex gap-1 rounded-full border border-border bg-background p-1.5 shadow-xl ${
+                        m.estMien ? "right-0" : "left-0"
+                      }`}
+                    >
+                      {REACTIONS_RAPIDES.map((e) => (
+                        <button
+                          key={e}
+                          type="button"
+                          aria-label={`Réagir avec ${e}`}
+                          onClick={() => basculerReaction(m.id, e)}
+                          disabled={pending}
+                          className="rounded-full p-1.5 text-xl hover:bg-surface disabled:opacity-50"
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
-            </li>
-          ))}
+
+                {chips.length > 0 && (
+                  <div className={`mt-1 flex flex-wrap gap-1 ${m.estMien ? "justify-end" : "justify-start"}`}>
+                    {chips.map(([emoji, info]) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => basculerReaction(m.id, emoji)}
+                        disabled={pending}
+                        title={info.moi ? "Retirer ma réaction" : "Réagir"}
+                        className={`flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-sm disabled:opacity-50 ${
+                          info.moi ? "border-accent font-semibold" : "border-border"
+                        }`}
+                      >
+                        <span>{emoji}</span>
+                        {info.count > 1 && <span className="text-xs font-semibold">{info.count}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {statut && (
