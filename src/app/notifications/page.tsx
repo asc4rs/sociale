@@ -28,6 +28,7 @@ type Notification = {
   created_at: string;
   post_id: string | null;
   comment_id: string | null;
+  conversation_id: string | null;
   detail: string | null;
   actor: Acteur | Acteur[] | null;
 };
@@ -63,7 +64,9 @@ const TEXTES: Record<string, string> = {
 function lienPour(n: Notification, pseudo: string) {
   if (n.type === "follow") return `/u/${pseudo}`;
   if (n.type === "follow_request") return "/demandes";
-  if (n.type === "message") return "/messages";
+  if (n.type === "message") {
+    return n.conversation_id ? `/messages/${n.conversation_id}` : "/messages";
+  }
   if (n.type === "warning") return "/notifications";
   if (n.post_id) {
     const base = `/publication/${n.post_id}`;
@@ -96,7 +99,7 @@ async function ContenuNotifications({ searchParams }: Props) {
   const base = supabase
     .from("notifications")
     .select(
-      "id, type, read, created_at, post_id, comment_id, detail, actor:profiles!notifications_actor_id_fkey(username, display_name, avatar_url)",
+      "id, type, read, created_at, post_id, comment_id, conversation_id, detail, actor:profiles!notifications_actor_id_fkey(username, display_name, avatar_url)",
     )
     .eq("recipient_id", user.id);
 
