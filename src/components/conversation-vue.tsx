@@ -24,6 +24,7 @@ type Props = {
   conversationId: string;
   moiId: string;
   messages: MessageAffiche[];
+  statut?: string | null;
 };
 
 const EMOJIS = [
@@ -56,7 +57,7 @@ function genreDe(file: File): Genre | null {
   return null;
 }
 
-function Media({ url, kind }: { url: string; kind: "image" | "video" | "fichier" }) {
+function Media({ url, kind }: { url: string; kind: Genre }) {
   if (kind === "image") {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
@@ -80,11 +81,11 @@ function Media({ url, kind }: { url: string; kind: "image" | "video" | "fichier"
   );
 }
 
-export function ConversationVue({ conversationId, moiId, messages }: Props) {
+export function ConversationVue({ conversationId, moiId, messages, statut = null }: Props) {
   const router = useRouter();
   const entree = useRef<HTMLInputElement>(null);
   const zone = useRef<HTMLTextAreaElement>(null);
-  const fin = useRef<HTMLDivElement>(null);
+  const liste = useRef<HTMLDivElement>(null);
 
   const [texte, setTexte] = useState("");
   const [piece, setPiece] = useState<Piece | null>(null);
@@ -93,9 +94,10 @@ export function ConversationVue({ conversationId, moiId, messages }: Props) {
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Descend automatiquement au dernier message.
+  // Descend automatiquement au dernier message, sans faire défiler la page entière.
   useEffect(() => {
-    fin.current?.scrollIntoView({ block: "end" });
+    const el = liste.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
   // Libère l'aperçu quand il change ou disparaît.
@@ -138,8 +140,8 @@ export function ConversationVue({ conversationId, moiId, messages }: Props) {
   function insererEmoji(emoji: string) {
     const el = zone.current;
     const debut = el?.selectionStart ?? texte.length;
-    const fin2 = el?.selectionEnd ?? texte.length;
-    setTexte(texte.slice(0, debut) + emoji + texte.slice(fin2));
+    const fin = el?.selectionEnd ?? texte.length;
+    setTexte(texte.slice(0, debut) + emoji + texte.slice(fin));
     setEmojisOuverts(false);
     requestAnimationFrame(() => {
       el?.focus();
@@ -199,172 +201,178 @@ export function ConversationVue({ conversationId, moiId, messages }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <ul className="flex flex-col gap-3">
-        {messages.length === 0 && (
-          <li className="text-center text-sm text-muted">Aucun message pour le moment.</li>
-        )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Liste des messages : seule partie qui défile */}
+      <div ref={liste} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+        <ul className="flex flex-col gap-3">
+          {messages.length === 0 && (
+            <li className="text-center text-sm text-muted">Aucun message pour le moment.</li>
+          )}
 
-        {messages.map((m) => (
-          <li key={m.id} className={`flex ${m.estMien ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[80%] rounded-2xl border border-border px-3 py-2 ${
-                m.estMien ? "bg-surface" : ""
-              }`}
-            >
-              {!m.estMien && <p className="text-xs font-semibold">{m.auteurNom}</p>}
-
-              {m.mediaUrl && m.mediaKind && (
-                <div className="mt-1">
-                  <Media url={m.mediaUrl} kind={m.mediaKind} />
-                </div>
-              )}
-
-              {m.contenu && (
-                <p className="mt-1 whitespace-pre-wrap break-words text-sm">{m.contenu}</p>
-              )}
-
-              <div className="mt-1 flex items-center justify-end gap-2 text-[10px] text-muted">
-                <span>{m.date}</span>
-                {m.estMien && (
-                  <button
-                    type="button"
-                    onClick={() => supprimer(m.id)}
-                    disabled={pending}
-                    aria-label="Supprimer ce message"
-                    title="Supprimer"
-                    className="rounded p-0.5 text-red-600 hover:bg-surface disabled:opacity-50"
-                  >
-                    <Trash2 size={12} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </li>
-        ))}
-        <div ref={fin} />
-      </ul>
-
-      <div className="flex flex-col gap-2 border-t border-border pt-3">
-        <input
-          ref={entree}
-          type="file"
-          onChange={choisirFichier}
-          className="hidden"
-        />
-
-        {piece && (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-2 text-sm">
-            <div className="flex min-w-0 items-center gap-2">
-              {piece.apercu && piece.genre === "image" && (
-                <img src={piece.apercu} alt="Aperçu" className="h-12 w-12 rounded-lg object-cover" />
-              )}
-              {piece.apercu && piece.genre === "video" && (
-                <video src={piece.apercu} className="h-12 w-16 rounded-lg object-cover" muted />
-              )}
-              {piece.genre === "fichier" && <Paperclip size={16} aria-hidden="true" />}
-              <span className="truncate">{piece.file.name}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPiece(null)}
-              aria-label="Retirer le fichier"
-              className="rounded-lg p-1 hover:bg-surface"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-
-        {plusOuvert && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => ouvrirChoix("image")}
-              className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
-            >
-              <ImageIcon size={16} aria-hidden="true" /> Photo
-            </button>
-            <button
-              type="button"
-              onClick={() => ouvrirChoix("video")}
-              className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
-            >
-              <Video size={16} aria-hidden="true" /> Vidéo
-            </button>
-            <button
-              type="button"
-              onClick={() => ouvrirChoix("fichier")}
-              className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
-            >
-              <Paperclip size={16} aria-hidden="true" /> Fichier
-            </button>
-          </div>
-        )}
-
-        {emojisOuverts && (
-          <div className="grid grid-cols-8 gap-1 rounded-xl border border-border p-2">
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                aria-label={`Ajouter ${e}`}
-                onClick={() => insererEmoji(e)}
-                className="rounded-lg py-0.5 text-lg hover:bg-surface"
+          {messages.map((m) => (
+            <li key={m.id} className={`flex ${m.estMien ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[80%] rounded-2xl border border-border px-3 py-2 ${
+                  m.estMien ? "bg-surface" : ""
+                }`}
               >
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
+                {!m.estMien && <p className="text-xs font-semibold">{m.auteurNom}</p>}
 
-        <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={() => setPlusOuvert(!plusOuvert)}
-            aria-label="Joindre un fichier"
-            aria-expanded={plusOuvert}
-            className="rounded-xl border border-border p-2 hover:bg-surface"
-          >
-            <Plus size={18} aria-hidden="true" />
-          </button>
+                {m.mediaUrl && m.mediaKind && (
+                  <div className="mt-1">
+                    <Media url={m.mediaUrl} kind={m.mediaKind} />
+                  </div>
+                )}
 
-          <button
-            type="button"
-            onClick={() => setEmojisOuverts(!emojisOuverts)}
-            aria-label="Émojis"
-            aria-expanded={emojisOuverts}
-            className="rounded-xl border border-border p-2 hover:bg-surface"
-          >
-            <Smile size={18} aria-hidden="true" />
-          </button>
+                {m.contenu && (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm">{m.contenu}</p>
+                )}
 
-          <textarea
-            ref={zone}
-            value={texte}
-            onChange={(e) => setTexte(e.target.value)}
-            maxLength={1000}
-            placeholder="Écrire un message"
-            rows={1}
-            className="min-h-10 flex-1 resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
-          />
+                <div className="mt-1 flex items-center justify-end gap-2 text-[10px] text-muted">
+                  <span>{m.date}</span>
+                  {m.estMien && (
+                    <button
+                      type="button"
+                      onClick={() => supprimer(m.id)}
+                      disabled={pending}
+                      aria-label="Supprimer ce message"
+                      title="Supprimer"
+                      className="rounded p-0.5 text-red-600 hover:bg-surface disabled:opacity-50"
+                    >
+                      <Trash2 size={12} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
 
-          <button
-            type="button"
-            onClick={envoyer}
-            disabled={pending || (!texte.trim() && !piece)}
-            aria-label="Envoyer"
-            className="rounded-xl bg-accent p-2.5 text-accent-foreground disabled:opacity-50"
-          >
-            <Send size={18} aria-hidden="true" />
-          </button>
-        </div>
-
-        {erreur && (
-          <p role="alert" className="text-sm text-red-600">
-            {erreur}
+        {statut && (
+          <p className="mt-3 text-right text-xs text-muted" aria-live="polite">
+            {statut}
           </p>
         )}
+      </div>
+
+      {/* Barre de saisie : toujours visible, en bas */}
+      <div className="shrink-0 border-t border-border bg-background px-4 pb-20 pt-3 md:pb-3">
+        <input ref={entree} type="file" onChange={choisirFichier} className="hidden" />
+
+        <div className="flex flex-col gap-2">
+          {piece && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-border p-2 text-sm">
+              <div className="flex min-w-0 items-center gap-2">
+                {piece.apercu && piece.genre === "image" && (
+                  <img src={piece.apercu} alt="Aperçu" className="h-12 w-12 rounded-lg object-cover" />
+                )}
+                {piece.apercu && piece.genre === "video" && (
+                  <video src={piece.apercu} className="h-12 w-16 rounded-lg object-cover" muted />
+                )}
+                {piece.genre === "fichier" && <Paperclip size={16} aria-hidden="true" />}
+                <span className="truncate">{piece.file.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPiece(null)}
+                aria-label="Retirer le fichier"
+                className="rounded-lg p-1 hover:bg-surface"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
+          {plusOuvert && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => ouvrirChoix("image")}
+                className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
+              >
+                <ImageIcon size={16} aria-hidden="true" /> Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => ouvrirChoix("video")}
+                className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
+              >
+                <Video size={16} aria-hidden="true" /> Vidéo
+              </button>
+              <button
+                type="button"
+                onClick={() => ouvrirChoix("fichier")}
+                className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface"
+              >
+                <Paperclip size={16} aria-hidden="true" /> Fichier
+              </button>
+            </div>
+          )}
+
+          {emojisOuverts && (
+            <div className="grid grid-cols-8 gap-1 rounded-xl border border-border p-2">
+              {EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  aria-label={`Ajouter ${e}`}
+                  onClick={() => insererEmoji(e)}
+                  className="rounded-lg py-0.5 text-lg hover:bg-surface"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPlusOuvert(!plusOuvert)}
+              aria-label="Joindre un fichier"
+              aria-expanded={plusOuvert}
+              className="rounded-xl border border-border p-2 hover:bg-surface"
+            >
+              <Plus size={18} aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setEmojisOuverts(!emojisOuverts)}
+              aria-label="Émojis"
+              aria-expanded={emojisOuverts}
+              className="rounded-xl border border-border p-2 hover:bg-surface"
+            >
+              <Smile size={18} aria-hidden="true" />
+            </button>
+
+            <textarea
+              ref={zone}
+              value={texte}
+              onChange={(e) => setTexte(e.target.value)}
+              maxLength={1000}
+              placeholder="Écrire un message"
+              rows={1}
+              className="min-h-10 flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
+            />
+
+            <button
+              type="button"
+              onClick={envoyer}
+              disabled={pending || (!texte.trim() && !piece)}
+              aria-label="Envoyer"
+              className="rounded-xl bg-accent p-2.5 text-accent-foreground disabled:opacity-50"
+            >
+              <Send size={18} aria-hidden="true" />
+            </button>
+          </div>
+
+          {erreur && (
+            <p role="alert" className="text-sm text-red-600">
+              {erreur}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

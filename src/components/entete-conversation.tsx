@@ -103,36 +103,28 @@ export function EnteteConversation({
   }
 
   return (
-    <header className="flex items-start justify-between gap-3 rounded-xl border border-border p-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <Link href="/messages" aria-label="Retour aux messages" className="rounded-xl p-2 hover:bg-surface md:hidden">
+    <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href="/messages" aria-label="Retour aux messages" className="shrink-0 rounded-xl p-2 hover:bg-surface">
           <ArrowLeft size={20} aria-hidden="true" />
         </Link>
 
-        <Avatar url={autre?.avatarUrl ?? null} nom={autre?.nom ?? titre} taille="lg" />
+        <Avatar url={autre?.avatarUrl ?? null} nom={autre?.nom ?? titre} />
 
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold">{autre?.nom ?? titre}</p>
-
-          {autre && <p className="text-sm text-muted">@{autre.username}</p>}
-
+          <p className="truncate font-bold">{autre?.nom ?? titre}</p>
           {autre && (
-            <p className="mt-1 text-xs text-muted">Rejoint Sociale en {autre.rejointLe}</p>
-          )}
-
-          {autre && (
-            <p className="mt-1 text-xs text-muted">
+            <p className="truncate text-xs text-muted">
+              @{autre.username} · Rejoint Sociale en {autre.rejointLe} ·{" "}
               <span className="font-semibold text-foreground">{autre.abonnes}</span> abonnés ·{" "}
               <span className="font-semibold text-foreground">{autre.abonnements}</span> abonnements
             </p>
           )}
-
           {estGroupe && (
-            <p className="mt-1 text-xs text-muted">Groupe · {nombreMembres} membres</p>
+            <p className="truncate text-xs text-muted">Groupe · {nombreMembres} membres</p>
           )}
-
           {autre && (
-            <Link href={`/u/${autre.username}`} className="mt-2 inline-block text-sm underline">
+            <Link href={`/u/${autre.username}`} className="text-xs underline">
               Voir le profil
             </Link>
           )}

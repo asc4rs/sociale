@@ -92,7 +92,6 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
     ? (conv?.name ?? (noms.join(", ") || "Groupe"))
     : (noms[0] ?? "Conversation");
 
-  // Pour une conversation à deux : abonnés et abonnements de l'autre personne.
   const principal = !estGroupe ? profilsAutres[0] : undefined;
   let abonnes = 0;
   let abonnements = 0;
@@ -113,7 +112,6 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
     abonnements = resAbonnements.count ?? 0;
   }
 
-  // Durée de disparition : les messages plus anciens ne sont pas affichés.
   const cutoff = conv?.ephemeral_hours
     ? new Date(Date.now() - conv.ephemeral_hours * 3600 * 1000).toISOString()
     : "1970-01-01T00:00:00.000Z";
@@ -162,35 +160,36 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 p-4 md:p-8">
-      <EnteteConversation
-        conversationId={id}
-        titre={titre}
-        estGroupe={estGroupe}
-        nombreMembres={membres.length}
-        disparition={conv?.ephemeral_hours ?? null}
-        autre={
-          principal
-            ? {
-                id: principal.id,
-                username: principal.profil.username,
-                nom: principal.profil.display_name,
-                avatarUrl: principal.profil.avatar_url,
-                rejointLe: moisAnnee(principal.profil.created_at),
-                abonnes,
-                abonnements,
-              }
-            : null
-        }
-      />
+    <div className="fixed inset-x-0 bottom-0 top-14 z-30 flex flex-col bg-background md:left-64 md:top-0">
+      <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
+        <EnteteConversation
+          conversationId={id}
+          titre={titre}
+          estGroupe={estGroupe}
+          nombreMembres={membres.length}
+          disparition={conv?.ephemeral_hours ?? null}
+          autre={
+            principal
+              ? {
+                  id: principal.id,
+                  username: principal.profil.username,
+                  nom: principal.profil.display_name,
+                  avatarUrl: principal.profil.avatar_url,
+                  rejointLe: moisAnnee(principal.profil.created_at),
+                  abonnes,
+                  abonnements,
+                }
+              : null
+          }
+        />
 
-      <ConversationVue conversationId={id} moiId={user.id} messages={messages} />
-
-      {statut && (
-        <p className="text-right text-xs text-muted" aria-live="polite">
-          {statut}
-        </p>
-      )}
+        <ConversationVue
+          conversationId={id}
+          moiId={user.id}
+          messages={messages}
+          statut={statut}
+        />
+      </div>
 
       <MarquerConversationLue conversationId={id} />
     </div>
