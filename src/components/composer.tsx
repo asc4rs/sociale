@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarClock, HelpCircle, ListChecks, Smile } from "lucide-react";
 import { creerPublication } from "@/app/actions/publications";
 
 type Type = "texte" | "sondage" | "question";
@@ -11,14 +12,13 @@ const EMOJIS = [
   "🔥", "🎉", "❤️", "😢", "😡", "🙏", "✨", "💯",
 ];
 
-const TYPES: { valeur: Type; libelle: string }[] = [
-  { valeur: "texte", libelle: "Publication" },
-  { valeur: "sondage", libelle: "Sondage" },
-  { valeur: "question", libelle: "Question" },
-];
-
 const champ =
   "w-full rounded-xl border border-border bg-background px-4 py-2 text-sm text-foreground outline-none focus:border-accent";
+
+const iconeBouton = (actif: boolean) =>
+  `flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-surface ${
+    actif ? "bg-surface text-foreground" : "text-muted"
+  }`;
 
 export function Composer() {
   const router = useRouter();
@@ -44,6 +44,11 @@ export function Composer() {
       const pos = debut + emoji.length;
       el?.setSelectionRange(pos, pos);
     });
+  }
+
+  // Un clic sur l'icône active la change, un second clic revient à la publication normale.
+  function choisirType(choix: Type) {
+    setType(type === choix ? "texte" : choix);
   }
 
   function changerOption(index: number, valeur: string) {
@@ -82,31 +87,13 @@ export function Composer() {
   const desactive =
     pending ||
     contenu.trim().length === 0 ||
-    (type === "sondage" && optionsValides < 2);
+    (type === "sondage" && optionsValides < 2) ||
+    (programmer && !dateProg);
 
   const restant = 280 - contenu.length;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex gap-2" role="radiogroup" aria-label="Type de publication">
-        {TYPES.map((t) => (
-          <button
-            key={t.valeur}
-            type="button"
-            role="radio"
-            aria-checked={type === t.valeur}
-            onClick={() => setType(t.valeur)}
-            className={`rounded-xl px-3 py-1.5 text-sm font-semibold ${
-              type === t.valeur
-                ? "bg-accent text-accent-foreground"
-                : "border border-border hover:bg-surface"
-            }`}
-          >
-            {t.libelle}
-          </button>
-        ))}
-      </div>
-
       <textarea
         ref={zone}
         value={contenu}
@@ -155,64 +142,91 @@ export function Composer() {
         </div>
       )}
 
-      <div className="relative self-start">
-        <button
-          type="button"
-          aria-label="Ajouter un émoji"
-          aria-expanded={emojisOuverts}
-          onClick={() => setEmojisOuverts(!emojisOuverts)}
-          className="rounded-xl border border-border px-3 py-1.5 text-base hover:bg-surface"
-        >
-          😀
-        </button>
-
-        {emojisOuverts && (
-          <div className="absolute left-0 top-full z-40 mt-2 grid w-64 grid-cols-8 gap-1 rounded-xl border border-border bg-background p-2 shadow-lg">
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                aria-label={`Ajouter ${e}`}
-                onClick={() => ajouterEmoji(e)}
-                className="rounded-lg py-0.5 text-lg hover:bg-surface"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={programmer}
-          onChange={(e) => setProgrammer(e.target.checked)}
-          className="h-4 w-4"
-        />
-        Programmer la publication
-      </label>
+      {emojisOuverts && (
+        <div className="grid grid-cols-8 gap-1 rounded-xl border border-border bg-background p-2">
+          {EMOJIS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              aria-label={`Ajouter ${e}`}
+              onClick={() => ajouterEmoji(e)}
+              className="rounded-lg py-0.5 text-lg hover:bg-surface"
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
 
       {programmer && (
         <input
           type="datetime-local"
           value={dateProg}
           onChange={(e) => setDateProg(e.target.value)}
+          aria-label="Date de publication"
           className={champ}
         />
       )}
 
-      <div className="flex items-center justify-between">
-        <span className={`text-sm ${restant < 20 ? "text-red-600" : "text-muted"}`}>
-          {restant}
-        </span>
-        <button
-          type="submit"
-          disabled={desactive || (programmer && !dateProg)}
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-        >
-          {pending ? "Envoi..." : programmer ? "Programmer" : "Publier"}
-        </button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Sondage"
+            title="Sondage"
+            aria-pressed={type === "sondage"}
+            onClick={() => choisirType("sondage")}
+            className={iconeBouton(type === "sondage")}
+          >
+            <ListChecks size={18} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            aria-label="Question"
+            title="Question"
+            aria-pressed={type === "question"}
+            onClick={() => choisirType("question")}
+            className={iconeBouton(type === "question")}
+          >
+            <HelpCircle size={18} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            aria-label="Émojis"
+            title="Émojis"
+            aria-expanded={emojisOuverts}
+            onClick={() => setEmojisOuverts(!emojisOuverts)}
+            className={iconeBouton(emojisOuverts)}
+          >
+            <Smile size={18} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            aria-label="Programmer"
+            title="Programmer"
+            aria-pressed={programmer}
+            onClick={() => setProgrammer(!programmer)}
+            className={iconeBouton(programmer)}
+          >
+            <CalendarClock size={18} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className={`text-sm ${restant < 20 ? "text-red-600" : "text-muted"}`}>
+            {restant}
+          </span>
+          <button
+            type="submit"
+            disabled={desactive}
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+          >
+            {pending ? "Envoi..." : programmer ? "Programmer" : "Publier"}
+          </button>
+        </div>
       </div>
 
       {message && (
