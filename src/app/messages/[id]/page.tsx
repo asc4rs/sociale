@@ -86,7 +86,7 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
 
   const bruts = (messagesData ?? []) as unknown as MessageBrut[];
 
-  const messages: MessageAffiche[] = bruts.map((m) => {
+  const messages: MessageAffiche[] = bruts.filter((m) => !m.deleted).map((m) => {
     const auteur = unObjet(m.profiles);
     return {
       id: m.id,

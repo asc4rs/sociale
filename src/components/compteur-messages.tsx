@@ -27,10 +27,12 @@ export function CompteurMessages() {
       return;
     }
 
+    // Les messages supprimés ne comptent pas.
     const { data: messages } = await supabase
       .from("messages")
       .select("conversation_id, created_at, author_id")
       .in("conversation_id", ids)
+      .eq("deleted", false)
       .order("created_at", { ascending: false })
       .limit(2000);
 
@@ -49,16 +51,20 @@ export function CompteurMessages() {
     setNombre(total);
   }, []);
 
+  // Recalcul à chaque changement de page.
   useEffect(() => {
     charger();
   }, [pathname, charger]);
 
+  // Recalcul toutes les 10 secondes, au retour sur l'onglet, et après lecture.
   useEffect(() => {
-    const minuteur = setInterval(charger, 30000);
+    const minuteur = setInterval(charger, 10000);
     window.addEventListener("messages-lus", charger);
+    window.addEventListener("focus", charger);
     return () => {
       clearInterval(minuteur);
       window.removeEventListener("messages-lus", charger);
+      window.removeEventListener("focus", charger);
     };
   }, [charger]);
 
