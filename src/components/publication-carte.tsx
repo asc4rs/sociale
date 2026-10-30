@@ -16,6 +16,7 @@ import {
   type CommentaireAffiche,
 } from "@/components/section-commentaires";
 import { Sondage, type OptionSondage } from "@/components/sondage";
+import { TexteRiche } from "@/components/texte-riche";
 
 type Props = {
   id: string;
@@ -103,7 +104,9 @@ export function PublicationCarte({
         </p>
       )}
 
-      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{contenu}</p>
+      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <TexteRiche texte={contenu} />
+      </p>
 
       {kind === "sondage" && options.length > 0 && (
         <Sondage postId={id} options={options} connecte={connecte} />
