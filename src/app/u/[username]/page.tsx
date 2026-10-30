@@ -277,9 +277,9 @@ async function ContenuProfil({
         />
       )}
 
-      {estMoi && user && (
+            {peutVoir && (
         <Suspense fallback={null}>
-          <SuggestionsAbonnements userId={user.id} />
+          <SuggestionsAbonnements userId={profil.id} exclureId={user?.id ?? null} />
         </Suspense>
       )}
     </div>

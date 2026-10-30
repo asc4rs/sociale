@@ -2,8 +2,15 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 
-// Comptes suivis par mes abonnements, que je ne suis pas encore.
-export async function SuggestionsAbonnements({ userId }: { userId: string }) {
+type Props = {
+  // Le profil affiché : on suggère les comptes qu'il suit.
+  userId: string;
+  // Le visiteur connecté, exclu des suggestions.
+  exclureId?: string | null;
+};
+
+// Comptes suivis par les abonnements de ce profil, que le visiteur ne suit pas encore.
+export async function SuggestionsAbonnements({ userId, exclureId = null }: Props) {
   const supabase = await createClient();
 
   const { data: mesSuivis } = await supabase
@@ -21,7 +28,7 @@ export async function SuggestionsAbonnements({ userId }: { userId: string }) {
     .eq("status", "accepted")
     .limit(500);
 
-  const exclus = new Set([userId, ...suivis]);
+  const exclus = new Set([userId, ...suivis, ...(exclureId ? [exclureId] : [])]);
   const compte = new Map<string, number>();
   for (const l of liens ?? []) {
     if (exclus.has(l.following_id)) continue;
@@ -43,7 +50,7 @@ export async function SuggestionsAbonnements({ userId }: { userId: string }) {
   return (
     <section className="mt-10">
       <h2 className="text-lg font-semibold">Suggestions</h2>
-      <p className="mt-1 text-sm text-muted">Suivis par des comptes que tu suis.</p>
+      <p className="mt-1 text-sm text-muted">Suivis par les comptes que suit ce profil.</p>
       <ul className="mt-3 flex flex-col gap-2">
         {top.map(([id, nombre]) => {
           const p = parId.get(id);
@@ -58,7 +65,7 @@ export async function SuggestionsAbonnements({ userId }: { userId: string }) {
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{p.display_name}</span>
                   <span className="block text-sm text-muted">
-                    @{p.username} · suivi par {nombre} de tes abonnements
+                    @{p.username} · suivi par {nombre} de ces abonnements
                   </span>
                 </span>
               </Link>
