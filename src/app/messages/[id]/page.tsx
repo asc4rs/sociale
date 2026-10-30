@@ -1,17 +1,17 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ConversationVue, type MessageAffiche } from "@/components/conversation-vue";
+import { EnteteConversation } from "@/components/entete-conversation";
 import { MarquerConversationLue } from "@/components/marquer-conversation-lue";
 
-type Auteur = { username: string; display_name: string };
+type Profil = { username: string; display_name: string; avatar_url: string | null; created_at: string };
 
 type Membre = {
   user_id: string;
   last_read_at: string;
-  profiles: Auteur | Auteur[] | null;
+  profiles: Profil | Profil[] | null;
 };
 
 type MessageBrut = {
@@ -19,13 +19,22 @@ type MessageBrut = {
   content: string;
   created_at: string;
   author_id: string;
-  deleted: boolean;
-  profiles: Auteur | Auteur[] | null;
+  media_url: string | null;
+  media_kind: "image" | "video" | "fichier" | null;
+  profiles: Profil | Profil[] | null;
 };
 
 function unObjet<T>(valeur: T | T[] | null | undefined): T | null {
   if (!valeur) return null;
   return Array.isArray(valeur) ? (valeur[0] ?? null) : valeur;
+}
+
+function formaterDate(iso: string) {
+  return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+}
+
+function moisAnnee(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 }
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -59,94 +68,131 @@ async function ContenuConversation({ params }: { params: Promise<{ id: string }>
 
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, is_group, name")
+    .select("id, is_group, name, ephemeral_hours")
     .eq("id", id)
     .maybeSingle();
 
   const { data: membresData } = await supabase
     .from("conversation_members")
-    .select("user_id, last_read_at, profiles(username, display_name)")
+    .select("user_id, last_read_at, profiles(username, display_name, avatar_url, created_at)")
     .eq("conversation_id", id);
 
   const membres = (membresData ?? []) as unknown as Membre[];
-  const autres = membres
-    .filter((m) => m.user_id !== user.id)
-    .map((m) => unObjet(m.profiles)?.display_name ?? "Inconnu");
+  const estGroupe = !!conv?.is_group;
 
-  const titre = conv?.is_group
-    ? (conv.name ?? (autres.join(", ") || "Groupe"))
-    : (autres[0] ?? "Conversation");
+  const profilsAutres = membres
+    .filter((m) => m.user_id !== user.id)
+    .flatMap((m) => {
+      const p = unObjet(m.profiles);
+      return p ? [{ id: m.user_id, profil: p, lecture: m.last_read_at }] : [];
+    });
+
+  const noms = profilsAutres.map((a) => a.profil.display_name);
+  const titre = estGroupe
+    ? (conv?.name ?? (noms.join(", ") || "Groupe"))
+    : (noms[0] ?? "Conversation");
+
+  // Pour une conversation à deux : abonnés et abonnements de l'autre personne.
+  const principal = !estGroupe ? profilsAutres[0] : undefined;
+  let abonnes = 0;
+  let abonnements = 0;
+  if (principal) {
+    const [resAbonnes, resAbonnements] = await Promise.all([
+      supabase
+        .from("follows")
+        .select("follower_id", { count: "exact", head: true })
+        .eq("following_id", principal.id)
+        .eq("status", "accepted"),
+      supabase
+        .from("follows")
+        .select("following_id", { count: "exact", head: true })
+        .eq("follower_id", principal.id)
+        .eq("status", "accepted"),
+    ]);
+    abonnes = resAbonnes.count ?? 0;
+    abonnements = resAbonnements.count ?? 0;
+  }
+
+  // Durée de disparition : les messages plus anciens ne sont pas affichés.
+  const cutoff = conv?.ephemeral_hours
+    ? new Date(Date.now() - conv.ephemeral_hours * 3600 * 1000).toISOString()
+    : "1970-01-01T00:00:00.000Z";
 
   const { data: messagesData } = await supabase
     .from("messages")
-    .select("id, content, created_at, author_id, deleted, profiles!messages_author_id_fkey(username, display_name)")
+    .select(
+      "id, content, created_at, author_id, media_url, media_kind, profiles!messages_author_id_fkey(username, display_name, avatar_url, created_at)",
+    )
     .eq("conversation_id", id)
+    .gte("created_at", cutoff)
     .order("created_at", { ascending: true })
     .limit(200);
 
   const bruts = (messagesData ?? []) as unknown as MessageBrut[];
 
-  const messages: MessageAffiche[] = bruts.filter((m) => !m.deleted).map((m) => {
+  const messages: MessageAffiche[] = bruts.map((m) => {
     const auteur = unObjet(m.profiles);
     return {
       id: m.id,
-      contenu: m.deleted ? "" : m.content,
-      date: new Date(m.created_at).toLocaleString("fr-FR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }),
+      contenu: m.content,
+      date: formaterDate(m.created_at),
       auteurNom: auteur?.display_name ?? "Compte inconnu",
       auteurPseudo: auteur?.username ?? "inconnu",
       estMien: user.id === m.author_id,
-      supprime: m.deleted,
+      mediaUrl: m.media_url,
+      mediaKind: m.media_kind,
     };
   });
 
-  // Indicateur de lecture : seulement pour les conversations à deux.
-  const mesMessages = bruts.filter((m) => m.author_id === user.id && !m.deleted);
+  // Indicateur « Vu / Envoyé » : seulement pour les conversations à deux.
+  let statut: string | null = null;
+  const mesMessages = bruts.filter((m) => m.author_id === user.id);
   const dernierMoi = mesMessages.length > 0 ? mesMessages[mesMessages.length - 1] : null;
 
-  const dernieresLectures = membres
-    .filter((m) => m.user_id !== user.id)
-    .map((m) => m.last_read_at)
-    .filter((d): d is string => !!d);
+  if (!estGroupe && dernierMoi) {
+    const derniereLecture = profilsAutres
+      .map((a) => a.lecture)
+      .reduce<string | null>((max, d) => (max === null || d > max ? d : max), null);
 
-  const derniereLecture = dernieresLectures.reduce<string | null>(
-    (max, d) => (max === null || d > max ? d : max),
-    null,
-  );
-
-  let statut: string | null = null;
-  if (!conv?.is_group && dernierMoi) {
     if (derniereLecture && derniereLecture >= dernierMoi.created_at) {
-      const heure = new Date(derniereLecture).toLocaleString("fr-FR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      });
-      statut = `Vu · ${heure}`;
+      statut = `Vu · ${formaterDate(derniereLecture)}`;
     } else {
       statut = "Envoyé";
     }
   }
 
   return (
-    <div className="mx-auto max-w-xl p-6 md:p-8">
-      <Link href="/messages" className="text-sm text-muted hover:underline">
-        ← Messages
-      </Link>
-      <h1 className="mt-2 text-2xl font-bold">{titre}</h1>
+    <div className="mx-auto flex max-w-xl flex-col gap-4 p-4 md:p-8">
+      <EnteteConversation
+        conversationId={id}
+        titre={titre}
+        estGroupe={estGroupe}
+        nombreMembres={membres.length}
+        disparition={conv?.ephemeral_hours ?? null}
+        autre={
+          principal
+            ? {
+                id: principal.id,
+                username: principal.profil.username,
+                nom: principal.profil.display_name,
+                avatarUrl: principal.profil.avatar_url,
+                rejointLe: moisAnnee(principal.profil.created_at),
+                abonnes,
+                abonnements,
+              }
+            : null
+        }
+      />
 
-      <MarquerConversationLue conversationId={id} />
-
-      <div className="mt-6">
-        <ConversationVue conversationId={id} messages={messages} />
-      </div>
+      <ConversationVue conversationId={id} moiId={user.id} messages={messages} />
 
       {statut && (
-        <p className="mt-3 text-right text-xs text-muted" aria-live="polite">
+        <p className="text-right text-xs text-muted" aria-live="polite">
           {statut}
         </p>
       )}
+
+      <MarquerConversationLue conversationId={id} />
     </div>
   );
 }

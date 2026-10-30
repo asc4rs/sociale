@@ -4,25 +4,19 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { Avatar } from "@/components/avatar";
 import { NouveauMessage } from "@/components/nouveau-message";
 
-type Auteur = { username: string; display_name: string };
-
+type Profil = { username: string; display_name: string; avatar_url: string | null };
 type Conversation = { id: string; is_group: boolean; name: string | null; created_at: string };
-
 type Ligne = {
   conversation_id: string;
   last_read_at: string;
   conversations: Conversation | Conversation[] | null;
 };
-
-type Membre = {
-  conversation_id: string;
-  user_id: string;
-  profiles: Auteur | Auteur[] | null;
-};
-
+type Membre = { conversation_id: string; user_id: string; profiles: Profil | Profil[] | null };
 type MessageRecent = { conversation_id: string; created_at: string; author_id: string };
+type Suggestion = { id: string; username: string; display_name: string; avatar_url: string | null };
 
 type Props = {
   searchParams: Promise<{ filtre?: string; q?: string }>;
@@ -42,7 +36,6 @@ export default function MessagesPage(props: Props) {
 }
 
 async function ContenuMessages({ searchParams }: Props) {
-  // Indique à Next.js que la page se calcule à chaque visite.
   await connection();
 
   const { filtre: filtreBrut, q: qBrut } = await searchParams;
@@ -72,7 +65,7 @@ async function ContenuMessages({ searchParams }: Props) {
     const [resMembres, resMessages] = await Promise.all([
       supabase
         .from("conversation_members")
-        .select("conversation_id, user_id, profiles(username, display_name)")
+        .select("conversation_id, user_id, profiles(username, display_name, avatar_url)")
         .in("conversation_id", ids),
       supabase
         .from("messages")
@@ -85,11 +78,16 @@ async function ContenuMessages({ searchParams }: Props) {
     recents = (resMessages.data ?? []) as MessageRecent[];
   }
 
-  // Dernier message de chaque conversation.
   const dernier = new Map<string, MessageRecent>();
   for (const msg of recents) {
     if (!dernier.has(msg.conversation_id)) dernier.set(msg.conversation_id, msg);
   }
+
+  const groupes = new Set(
+    lignes
+      .filter((l) => unObjet(l.conversations)?.is_group)
+      .map((l) => l.conversation_id),
+  );
 
   const toutes = lignes
     .map((l) => {
@@ -130,6 +128,35 @@ async function ContenuMessages({ searchParams }: Props) {
       (q === "" || c.titre.toLowerCase().includes(q.toLowerCase())),
   );
 
+  // Suggestions : comptes que je suis, avec qui je n'ai pas encore de conversation privée.
+  const dejaEcrit = new Set(
+    membres
+      .filter((m) => m.user_id !== user.id && !groupes.has(m.conversation_id))
+      .map((m) => m.user_id),
+  );
+
+  const { data: suivisData } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", user.id)
+    .eq("status", "accepted")
+    .limit(200);
+
+  const aSuggerer = (suivisData ?? [])
+    .map((f) => f.following_id)
+    .filter((id) => id !== user.id && !dejaEcrit.has(id))
+    .slice(0, 10);
+
+  let suggestions: Suggestion[] = [];
+  if (aSuggerer.length > 0) {
+    const { data: profilsData } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .in("id", aSuggerer);
+    suggestions = (profilsData ?? []) as Suggestion[];
+  }
+
+  const suffixeQ = q ? `&q=${encodeURIComponent(q)}` : "";
   const classeOnglet = (actif: boolean) =>
     `rounded-xl px-3 py-1.5 text-sm font-semibold ${
       actif ? "bg-accent text-accent-foreground" : "border border-border hover:bg-surface"
@@ -140,8 +167,40 @@ async function ContenuMessages({ searchParams }: Props) {
       <h1 className="text-3xl font-bold">Messages</h1>
 
       <div className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold text-muted">Nouveau message ou groupe</h2>
         <NouveauMessage />
       </div>
+
+      {suggestions.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-muted">Suggestions</h2>
+          <p className="mt-1 text-xs text-muted">
+            Comptes que tu suis avec qui tu n&apos;as pas encore de conversation.
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {suggestions.map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <Avatar url={s.avatar_url} nom={s.display_name} />
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{s.display_name}</span>
+                    <span className="block truncate text-xs text-muted">@{s.username}</span>
+                  </span>
+                </span>
+                <Link
+                  href={`/nouvelle-conversation?cible=${s.id}`}
+                  className="shrink-0 rounded-xl bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+                >
+                  Écrire
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form action="/messages" method="get" className="mt-8 flex gap-2">
         <input type="hidden" name="filtre" value={filtre} />
@@ -161,13 +220,13 @@ async function ContenuMessages({ searchParams }: Props) {
       </form>
 
       <nav aria-label="Filtres" className="mt-4 flex flex-wrap gap-2">
-        <Link href={`/messages?filtre=tout${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={classeOnglet(filtre === "tout")}>
+        <Link href={`/messages?filtre=tout${suffixeQ}`} className={classeOnglet(filtre === "tout")}>
           Tout
         </Link>
-        <Link href={`/messages?filtre=non-lus${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={classeOnglet(filtre === "non-lus")}>
+        <Link href={`/messages?filtre=non-lus${suffixeQ}`} className={classeOnglet(filtre === "non-lus")}>
           Non lus{nbNonLus > 0 ? ` (${nbNonLus})` : ""}
         </Link>
-        <Link href={`/messages?filtre=groupes${q ? `&q=${encodeURIComponent(q)}` : ""}`} className={classeOnglet(filtre === "groupes")}>
+        <Link href={`/messages?filtre=groupes${suffixeQ}`} className={classeOnglet(filtre === "groupes")}>
           Groupes
         </Link>
       </nav>
