@@ -12,16 +12,47 @@ type Props = {
 const TAILLE_MAX = 2 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+// Dimensions attendues selon le type d'image.
+const REGLES = {
+  avatar_url: {
+    texte: "Photo de profil : carrée, 200 × 200 px minimum (par exemple 400 × 400 px).",
+    verifier: (w: number, h: number) => w === h && w >= 200,
+  },
+  banner_url: {
+    texte: "Bannière : format 3:1, 1000 × 333 px minimum (par exemple 1500 × 500 px).",
+    verifier: (w: number, h: number) => w >= 1000 && Math.abs(w / h - 3) < 0.05,
+  },
+} as const;
+
+// Lit la largeur et la hauteur réelles de l'image choisie.
+function lireDimensions(fichier: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => {
+      resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("lecture"));
+    };
+    img.src = url;
+  });
+}
+
 export function TeleverserImage({ champ, libelle }: Props) {
   const router = useRouter();
   const entree = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function choisir(e: React.ChangeEvent<HTMLInputElement>) {
+  async function choisir(e: React.ChangeEvent<HTMLInputElement>) {
     const fichier = e.target.files?.[0];
     e.target.value = "";
     if (!fichier) return;
+
+    setMessage(null);
 
     if (!TYPES.includes(fichier.type)) {
       setMessage("Format non accepté (JPG, PNG, WebP ou GIF).");
@@ -32,7 +63,22 @@ export function TeleverserImage({ champ, libelle }: Props) {
       return;
     }
 
-    setMessage(null);
+    let dimensions;
+    try {
+      dimensions = await lireDimensions(fichier);
+    } catch {
+      setMessage("Impossible de lire cette image. Essaie un autre fichier.");
+      return;
+    }
+
+    const regle = REGLES[champ];
+    if (!regle.verifier(dimensions.w, dimensions.h)) {
+      setMessage(
+        `Dimensions incorrectes (${dimensions.w} × ${dimensions.h} px). ${regle.texte}`,
+      );
+      return;
+    }
+
     startTransition(async () => {
       const supabase = createClient();
       const {
@@ -112,6 +158,7 @@ export function TeleverserImage({ champ, libelle }: Props) {
       >
         Supprimer
       </button>
+      <p className="w-full text-xs text-muted">{REGLES[champ].texte}</p>
       {message && (
         <p role="alert" className="w-full text-sm text-red-600">
           {message}
