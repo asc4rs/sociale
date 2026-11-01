@@ -1,9 +1,11 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, HelpCircle, ListChecks, Smile } from "lucide-react";
 import { creerPublication } from "@/app/actions/publications";
+import { enregistrerBrouillon } from "@/app/actions/brouillons";
 
 type Type = "texte" | "sondage" | "question";
 
@@ -30,9 +32,9 @@ export function Composer() {
   const [programmer, setProgrammer] = useState(false);
   const [dateProg, setDateProg] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Insère l'émoji à l'endroit où se trouve le curseur.
   function ajouterEmoji(emoji: string) {
     const el = zone.current;
     const debut = el?.selectionStart ?? contenu.length;
@@ -46,7 +48,6 @@ export function Composer() {
     });
   }
 
-  // Un clic sur l'icône active la change, un second clic revient à la publication normale.
   function choisirType(choix: Type) {
     setType(type === choix ? "texte" : choix);
   }
@@ -58,6 +59,7 @@ export function Composer() {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setInfo(null);
 
     const programmeePour = programmer && dateProg ? new Date(dateProg).toISOString() : null;
 
@@ -79,6 +81,25 @@ export function Composer() {
       setOptions(["", ""]);
       setProgrammer(false);
       setDateProg("");
+      router.refresh();
+    });
+  }
+
+  function enregistrerBrouillonClic() {
+    if (type === "sondage") return;
+    const typeBrouillon = type === "question" ? "question" : "texte";
+    setMessage(null);
+    setInfo(null);
+
+    startTransition(async () => {
+      const result = await enregistrerBrouillon(contenu, typeBrouillon);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      setContenu("");
+      setType("texte");
+      setInfo("Brouillon enregistré.");
       router.refresh();
     });
   }
@@ -219,6 +240,18 @@ export function Composer() {
           <span className={`text-sm ${restant < 20 ? "text-red-600" : "text-muted"}`}>
             {restant}
           </span>
+
+          {type !== "sondage" && !programmer && (
+            <button
+              type="button"
+              onClick={enregistrerBrouillonClic}
+              disabled={pending || contenu.trim().length === 0}
+              className="rounded-xl border border-border px-3 py-2 text-sm font-semibold hover:bg-surface disabled:opacity-50"
+            >
+              Brouillon
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={desactive}
@@ -228,6 +261,12 @@ export function Composer() {
           </button>
         </div>
       </div>
+
+      <Link href="/brouillons" className="self-end text-xs text-muted underline">
+        Mes brouillons
+      </Link>
+
+      {info && <p className="text-sm text-muted">{info}</p>}
 
       {message && (
         <p role="alert" className="text-sm text-red-600">
