@@ -1,8 +1,12 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { BandeStories } from "@/components/bande-stories";
 import { Composer } from "@/components/composer";
 import { ListePublications, type Publication } from "@/components/liste-publications";
+
+const SELECT_PUBLICATIONS =
+  "id, content, created_at, author_id, kind, views_count, profiles!posts_author_id_fkey(username, display_name, avatar_url), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name)), poll_options(id, libelle, position, poll_votes(user_id))";
 
 function formaterDate(iso: string) {
   return new Date(iso).toLocaleString("fr-FR", {
@@ -31,9 +35,7 @@ async function ContenuAccueil() {
   // Seules les publications dont la date est passée apparaissent dans le fil.
   const { data } = await supabase
     .from("posts")
-    .select(
-      "id, content, created_at, author_id, kind, views_count, profiles!posts_author_id_fkey(username, display_name, avatar_url), likes(user_id), reposts(user_id), comments(id, content, created_at, author_id, profiles!comments_author_id_fkey(username, display_name)), poll_options(id, libelle, position, poll_votes(user_id))",
-    )
+    .select(SELECT_PUBLICATIONS)
     .lte("publish_at", new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(50);
@@ -81,6 +83,10 @@ async function ContenuAccueil() {
   return (
     <div className="mx-auto max-w-xl p-6 md:p-8">
       <h1 className="text-3xl font-bold">Accueil</h1>
+
+      <div className="mt-6">
+        <BandeStories userId={user?.id ?? null} />
+      </div>
 
       <div className="mt-6">
         <Composer />
