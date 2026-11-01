@@ -45,6 +45,9 @@ const DUREE = 5000;
 const TYPES_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const TAILLE_MAX = 10 * 1024 * 1024;
 
+const ANNEAU_NON_VU = "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600";
+const ANNEAU_VU = "bg-neutral-500";
+
 function unObjet<T>(valeur: T | T[] | null | undefined): T | null {
   if (!valeur) return null;
   return Array.isArray(valeur) ? (valeur[0] ?? null) : valeur;
@@ -52,6 +55,37 @@ function unObjet<T>(valeur: T | T[] | null | undefined): T | null {
 
 function heure(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Avatar entouré d'un contour : coloré (non vue), gris (vue), ou pointillés (aucune story).
+function AvatarAnneau({
+  url,
+  nom,
+  classe,
+  pointille = false,
+}: {
+  url: string | null;
+  nom: string;
+  classe?: string;
+  pointille?: boolean;
+}) {
+  if (pointille) {
+    return (
+      <span className="block rounded-full border-2 border-dashed border-neutral-500 p-[3px]">
+        <span className="block rounded-full bg-background p-[3px]">
+          <Avatar url={url} nom={nom} taille="md" />
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={`block rounded-full p-[3px] ${classe ?? ANNEAU_VU}`}>
+      <span className="block rounded-full bg-background p-[3px]">
+        <Avatar url={url} nom={nom} taille="md" />
+      </span>
+    </span>
+  );
 }
 
 export function BandeStories({ userId }: { userId: string | null }) {
@@ -152,7 +186,7 @@ export function BandeStories({ userId }: { userId: string | null }) {
 
   return (
     <>
-      <section aria-label="Stories" className="flex gap-4 overflow-x-auto pb-2">
+      <section aria-label="Stories" className="flex gap-4 overflow-x-auto px-1 py-2">
         <div className="flex w-16 shrink-0 flex-col items-center gap-1">
           <div className="relative">
             <button
@@ -161,15 +195,11 @@ export function BandeStories({ userId }: { userId: string | null }) {
               aria-label={mesStories ? "Voir ta story" : "Créer une story"}
               className="block"
             >
-              <span
-                className={`block rounded-full p-0.5 ${
-                  mesStories ? "bg-border" : "border border-dashed border-border"
-                }`}
-              >
-                <span className="block rounded-full bg-background p-0.5">
-                  <Avatar url={moi.avatar} nom={moi.nom} taille="md" />
-                </span>
-              </span>
+              {mesStories ? (
+                <AvatarAnneau url={moi.avatar} nom={moi.nom} classe={ANNEAU_NON_VU} />
+              ) : (
+                <AvatarAnneau url={moi.avatar} nom={moi.nom} pointille />
+              )}
             </button>
             <button
               type="button"
@@ -191,15 +221,11 @@ export function BandeStories({ userId }: { userId: string | null }) {
               aria-label={`Story de ${g.nom}`}
               className="block"
             >
-              <span
-                className={`block rounded-full p-0.5 ${
-                  g.nonVue ? "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600" : "bg-border"
-                }`}
-              >
-                <span className="block rounded-full bg-background p-0.5">
-                  <Avatar url={g.avatar} nom={g.nom} taille="md" />
-                </span>
-              </span>
+              <AvatarAnneau
+                url={g.avatar}
+                nom={g.nom}
+                classe={g.nonVue ? ANNEAU_NON_VU : ANNEAU_VU}
+              />
             </button>
             <span className="w-16 truncate text-center text-xs">{g.nom}</span>
           </div>
@@ -245,7 +271,6 @@ function Visionneuse({
   const story = groupe.stories[index];
   const estMoi = groupe.auteurId === moiId;
 
-  // Marque la story comme vue (sauf mes propres stories).
   useEffect(() => {
     if (!story || estMoi) return;
     enregistrerVueStory(story.id);
@@ -260,13 +285,11 @@ function Visionneuse({
     if (index > 0) setIndex(index - 1);
   }
 
-  // Passe automatiquement à la story suivante.
   useEffect(() => {
     const t = setTimeout(suivant, DUREE);
     return () => clearTimeout(t);
   }, [index]);
 
-  // Touches : Échap ferme, flèches changent de story.
   useEffect(() => {
     function touche(e: KeyboardEvent) {
       if (e.key === "Escape") onFermer();
@@ -362,7 +385,6 @@ function Visionneuse({
           </p>
         )}
 
-        {/* Zones de clic : gauche = précédente, droite = suivante */}
         <button
           type="button"
           onClick={precedent}
@@ -407,14 +429,12 @@ function CreerStory({
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Libère l'aperçu quand il change ou disparaît.
   useEffect(() => {
     return () => {
       if (apercu) URL.revokeObjectURL(apercu);
     };
   }, [apercu]);
 
-  // Charge mes abonnements et ma liste d'amis proches.
   useEffect(() => {
     let annule = false;
 
