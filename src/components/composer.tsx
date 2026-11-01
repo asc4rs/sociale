@@ -3,11 +3,18 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, HelpCircle, ListChecks, Smile } from "lucide-react";
+import { CalendarClock, HelpCircle, Image as ImageIcon, ListChecks, Smile, X } from "lucide-react";
 import { creerPublication } from "@/app/actions/publications";
+import { creerPublicationCarrousel } from "@/app/actions/carrousel";
 import { enregistrerBrouillon } from "@/app/actions/brouillons";
+import { createClient } from "@/lib/supabase/client";
 
 type Type = "texte" | "sondage" | "question";
+type Fichier = { file: File; apercu: string };
+
+const MAX_IMAGES = 10;
+const TAILLE_MAX_IMAGE = 10 * 1024 * 1024;
+const TYPES_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😎", "🤔", "👍", "👏",
@@ -25,15 +32,66 @@ const iconeBouton = (actif: boolean) =>
 export function Composer() {
   const router = useRouter();
   const zone = useRef<HTMLTextAreaElement>(null);
+  const entreeImages = useRef<HTMLInputElement>(null);
   const [contenu, setContenu] = useState("");
   const [type, setType] = useState<Type>("texte");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [emojisOuverts, setEmojisOuverts] = useState(false);
   const [programmer, setProgrammer] = useState(false);
   const [dateProg, setDateProg] = useState("");
+  const [fichiers, setFichiers] = useState<Fichier[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function viderImages() {
+    fichiers.forEach((f) => URL.revokeObjectURL(f.apercu));
+    setFichiers([]);
+  }
+
+  function choisirImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const choix = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (choix.length === 0) return;
+    setMessage(null);
+
+    const valides: Fichier[] = [];
+    for (const file of choix) {
+      if (!TYPES_IMAGE.includes(file.type)) {
+        setMessage("Format non accepté (JPG, PNG, WebP ou GIF).");
+        continue;
+      }
+      if (file.size > TAILLE_MAX_IMAGE) {
+        setMessage("Une image dépasse 10 Mo.");
+        continue;
+      }
+      valides.push({ file, apercu: URL.createObjectURL(file) });
+    }
+
+    const place = Math.max(MAX_IMAGES - fichiers.length, 0);
+    if (valides.length > place) {
+      setMessage(`Maximum ${MAX_IMAGES} images par publication.`);
+      valides.slice(place).forEach((f) => URL.revokeObjectURL(f.apercu));
+    }
+    setFichiers([...fichiers, ...valides.slice(0, place)]);
+  }
+
+  function retirerImage(index: number) {
+    URL.revokeObjectURL(fichiers[index].apercu);
+    setFichiers(fichiers.filter((_, i) => i !== index));
+  }
+
+  function basculerProgrammer() {
+    const nouveau = !programmer;
+    setProgrammer(nouveau);
+    if (nouveau) viderImages();
+  }
+
+  function choisirType(choix: Type) {
+    const nouveau = type === choix ? "texte" : choix;
+    setType(nouveau);
+    if (nouveau !== "texte") viderImages();
+  }
 
   function ajouterEmoji(emoji: string) {
     const el = zone.current;
@@ -48,10 +106,6 @@ export function Composer() {
     });
   }
 
-  function choisirType(choix: Type) {
-    setType(type === choix ? "texte" : choix);
-  }
-
   function changerOption(index: number, valeur: string) {
     setOptions(options.map((o, i) => (i === index ? valeur : o)));
   }
@@ -64,6 +118,45 @@ export function Composer() {
     const programmeePour = programmer && dateProg ? new Date(dateProg).toISOString() : null;
 
     startTransition(async () => {
+      // Publication avec images : on envoie d'abord les fichiers, puis on crée la publication.
+      if (fichiers.length > 0) {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setMessage("Tu dois être connecté.");
+          return;
+        }
+
+        const urls: string[] = [];
+        for (let i = 0; i < fichiers.length; i++) {
+          const file = fichiers[i].file;
+          const nom = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const chemin = `${user.id}/posts/${Date.now()}-${i}-${nom}`;
+
+          const { error } = await supabase.storage
+            .from("medias")
+            .upload(chemin, file, { contentType: file.type });
+          if (error) {
+            setMessage("Envoi d'une image impossible. Réessaie.");
+            return;
+          }
+          urls.push(supabase.storage.from("medias").getPublicUrl(chemin).data.publicUrl);
+        }
+
+        const r = await creerPublicationCarrousel(contenu, urls);
+        if (r.error) {
+          setMessage(r.error);
+          return;
+        }
+
+        viderImages();
+        setContenu("");
+        router.refresh();
+        return;
+      }
+
       const result = await creerPublication({
         contenu,
         type,
@@ -107,7 +200,7 @@ export function Composer() {
   const optionsValides = options.filter((o) => o.trim().length > 0).length;
   const desactive =
     pending ||
-    contenu.trim().length === 0 ||
+    (contenu.trim().length === 0 && fichiers.length === 0) ||
     (type === "sondage" && optionsValides < 2) ||
     (programmer && !dateProg);
 
@@ -126,6 +219,24 @@ export function Composer() {
 
       {type === "question" && (
         <p className="text-xs text-muted">Les réponses se font dans les commentaires.</p>
+      )}
+
+      {fichiers.length > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {fichiers.map((f, i) => (
+            <div key={f.apercu} className="relative">
+              <img src={f.apercu} alt="" className="h-20 w-full rounded-xl object-cover" />
+              <button
+                type="button"
+                onClick={() => retirerImage(i)}
+                aria-label="Retirer cette image"
+                className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white hover:bg-black/90"
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {type === "sondage" && (
@@ -189,6 +300,15 @@ export function Composer() {
         />
       )}
 
+      <input
+        ref={entreeImages}
+        type="file"
+        accept={TYPES_IMAGE.join(",")}
+        multiple
+        onChange={choisirImages}
+        className="hidden"
+      />
+
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button
@@ -213,6 +333,18 @@ export function Composer() {
             <HelpCircle size={18} aria-hidden="true" />
           </button>
 
+          {type === "texte" && !programmer && (
+            <button
+              type="button"
+              aria-label="Ajouter des images"
+              title={`Images (${MAX_IMAGES} maximum)`}
+              onClick={() => entreeImages.current?.click()}
+              className={iconeBouton(fichiers.length > 0)}
+            >
+              <ImageIcon size={18} aria-hidden="true" />
+            </button>
+          )}
+
           <button
             type="button"
             aria-label="Émojis"
@@ -229,7 +361,7 @@ export function Composer() {
             aria-label="Programmer"
             title="Programmer"
             aria-pressed={programmer}
-            onClick={() => setProgrammer(!programmer)}
+            onClick={basculerProgrammer}
             className={iconeBouton(programmer)}
           >
             <CalendarClock size={18} aria-hidden="true" />
@@ -241,7 +373,7 @@ export function Composer() {
             {restant}
           </span>
 
-          {type !== "sondage" && !programmer && (
+          {type !== "sondage" && !programmer && fichiers.length === 0 && (
             <button
               type="button"
               onClick={enregistrerBrouillonClic}

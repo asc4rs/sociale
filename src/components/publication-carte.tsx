@@ -9,6 +9,7 @@ import { ApercuProfil } from "@/components/apercu-profil";
 import { Avatar } from "@/components/avatar";
 import { BoutonLike } from "@/components/bouton-like";
 import { BoutonsPublication } from "@/components/boutons-publication";
+import { CarrouselMedias } from "@/components/carrousel-medias";
 import { CitationApercu } from "@/components/citation-apercu";
 import { EnregistrerVue } from "@/components/enregistrer-vue";
 import { MenuPublication } from "@/components/menu-publication";
@@ -110,9 +111,13 @@ export function PublicationCarte({
         </p>
       )}
 
-      <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        <TexteRiche texte={contenu} />
-      </p>
+      {contenu && (
+        <p className="mt-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          <TexteRiche texte={contenu} />
+        </p>
+      )}
+
+      {kind === "texte" && <CarrouselMedias postId={id} />}
 
       <CitationApercu postId={id} />
 
