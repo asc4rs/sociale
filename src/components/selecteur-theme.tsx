@@ -2,61 +2,77 @@
 
 import { useEffect, useState } from "react";
 
-type Choix = "systeme" | "clair" | "sombre";
+type Choix = "systeme" | "clair" | "sombre" | "noir";
 
 const CLE = "sociale-theme";
 
-const OPTIONS: { valeur: Choix; libelle: string }[] = [
-  { valeur: "systeme", libelle: "Système" },
-  { valeur: "clair", libelle: "Clair" },
-  { valeur: "sombre", libelle: "Sombre" },
+const OPTIONS: { valeur: Choix; libelle: string; description: string }[] = [
+  { valeur: "systeme", libelle: "Système", description: "Suit le réglage de l'appareil" },
+  { valeur: "clair", libelle: "Clair", description: "Fond blanc" },
+  { valeur: "sombre", libelle: "Sombre", description: "Fond gris très foncé" },
+  { valeur: "noir", libelle: "Noir", description: "Fond noir absolu" },
 ];
 
-// Le CSS attend "light" ou "dark" : on traduit le choix ici.
+// Applique le thème à la page : mode clair ou sombre, et fond noir absolu si demandé.
 function appliquer(choix: Choix) {
   const racine = document.documentElement;
-  if (choix === "systeme") {
-    racine.removeAttribute("data-theme");
-  } else if (choix === "clair") {
-    racine.setAttribute("data-theme", "light");
+  const sombre =
+    choix === "sombre" ||
+    choix === "noir" ||
+    (choix === "systeme" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  racine.dataset.theme = sombre ? "dark" : "light";
+
+  if (choix === "noir") {
+    racine.style.setProperty("--background", "#000000");
   } else {
-    racine.setAttribute("data-theme", "dark");
+    racine.style.removeProperty("--background");
   }
 }
 
 export function SelecteurTheme() {
   const [choix, setChoix] = useState<Choix>("systeme");
 
+  // Au chargement : lit le choix enregistré, et suit le système si besoin.
   useEffect(() => {
-    const sauve = (localStorage.getItem(CLE) as Choix | null) ?? "systeme";
-    setChoix(sauve);
-    appliquer(sauve);
+    const enregistre = (localStorage.getItem(CLE) as Choix | null) ?? "systeme";
+    setChoix(enregistre);
+    appliquer(enregistre);
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    function auChangementSysteme() {
+      if ((localStorage.getItem(CLE) ?? "systeme") === "systeme") appliquer("systeme");
+    }
+    media.addEventListener("change", auChangementSysteme);
+    return () => media.removeEventListener("change", auChangementSysteme);
   }, []);
 
-  function changer(nouveau: Choix) {
-    localStorage.setItem(CLE, nouveau);
-    setChoix(nouveau);
-    appliquer(nouveau);
+  function changer(valeur: Choix) {
+    localStorage.setItem(CLE, valeur);
+    setChoix(valeur);
+    appliquer(valeur);
   }
 
   return (
-    <div role="radiogroup" aria-label="Thème" className="flex gap-2">
-      {OPTIONS.map((o) => (
-        <button
-          key={o.valeur}
-          type="button"
-          role="radio"
-          aria-checked={choix === o.valeur}
-          onClick={() => changer(o.valeur)}
-          className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
-            choix === o.valeur
-              ? "bg-accent text-accent-foreground"
-              : "border-border hover:bg-surface"
-          }`}
-        >
-          {o.libelle}
-        </button>
-      ))}
+    <div role="radiogroup" aria-label="Thème" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {OPTIONS.map((o) => {
+        const actif = choix === o.valeur;
+        return (
+          <button
+            key={o.valeur}
+            type="button"
+            role="radio"
+            aria-checked={actif}
+            onClick={() => changer(o.valeur)}
+            className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-colors ${
+              actif ? "border-accent bg-surface" : "border-border hover:bg-surface"
+            }`}
+          >
+            <span className="text-sm font-semibold">{o.libelle}</span>
+            <span className="text-xs text-muted">{o.description}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
