@@ -29,7 +29,7 @@ export const PAGES_AVEC_RETOUR = [
   "/confidentialite",
   "/supprimer-compte",
   "/moderation",
-  "/administration",
+  "/administration", "/listes", "/listes",
 ];
 
 export function commencePar(pathname: string, prefixes: string[]) {

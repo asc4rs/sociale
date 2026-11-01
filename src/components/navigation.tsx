@@ -8,6 +8,7 @@ import {
   Bookmark,
   Compass,
   Home,
+  List,
   Mail,
   Menu,
   Search,
@@ -39,6 +40,7 @@ const TOUS: NavItem[] = [
   { href: "/messages", label: "Messages", icon: Mail, compteur: "messages" },
   { href: "/demandes", label: "Demandes", icon: UserPlus, prive: true },
   { href: "/favoris", label: "Favoris", icon: Bookmark },
+  { href: "/listes", label: "Listes", icon: List },
   { href: "/profil", label: "Profil", icon: User },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
@@ -56,6 +58,7 @@ const MENU: NavItem[] = [
   { href: "/explorer", label: "Explorer", icon: Compass },
   { href: "/demandes", label: "Demandes", icon: UserPlus, prive: true },
   { href: "/favoris", label: "Favoris", icon: Bookmark },
+  { href: "/listes", label: "Listes", icon: List },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -93,8 +96,7 @@ type Variante = "side" | "bottom" | "menu";
 
 function NavLink({ item, variante }: { item: NavItem; variante: Variante }) {
   const pathname = usePathname();
-  const actif =
-    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+  const actif = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
   const Icone = item.icon;
 
   const disposition = {
