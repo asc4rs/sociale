@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Copy,
+  Forward,
   Image as ImageIcon,
   Info,
   MoreHorizontal,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { envoyerDansConversation, supprimerMonMessage } from "@/app/actions/conversation";
 import { createClient } from "@/lib/supabase/client";
+import { FenetreTransfert } from "@/components/fenetre-transfert";
 
 export type MessageAffiche = {
   id: string;
@@ -116,6 +118,7 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
   const [versionReactions, setVersionReactions] = useState(0);
   const [menu, setMenu] = useState<string | null>(null);
   const [infoId, setInfoId] = useState<string | null>(null);
+  const [transfertId, setTransfertId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const idsKey = messages.map((m) => m.id).join(",");
@@ -157,7 +160,6 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
     };
   }, [idsKey, moiId, versionReactions]);
 
-  // Descend au dernier message à chaque nouvel envoi ou réception.
   useEffect(() => {
     const el = liste.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -230,6 +232,11 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
   function copier(texteCopie: string) {
     navigator.clipboard.writeText(texteCopie);
     setMenu(null);
+  }
+
+  function ouvrirTransfert(id: string) {
+    setMenu(null);
+    setTransfertId(id);
   }
 
   function supprimer(id: string) {
@@ -420,6 +427,11 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
                         </button>
                       )}
 
+                      <button type="button" onClick={() => ouvrirTransfert(m.id)} className={ELEMENT_MENU}>
+                        <Forward size={18} aria-hidden="true" />
+                        Transférer à
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setInfoId(infoId === m.id ? null : m.id)}
@@ -590,6 +602,14 @@ export function ConversationVue({ conversationId, moiId, messages, statut = null
           )}
         </div>
       </div>
+
+      {transfertId && (
+        <FenetreTransfert
+          messageId={transfertId}
+          conversationActuelleId={conversationId}
+          onFermer={() => setTransfertId(null)}
+        />
+      )}
     </div>
   );
 }
