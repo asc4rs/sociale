@@ -5,7 +5,7 @@ export const PAGES_SANS_MENU = [
   "/mot-de-passe-oublie",
   "/reinitialiser-mot-de-passe",
   "/auth/",
-  "/banni",
+  "/banni", "/hors-ligne",
 ];
 
 // Pages légales : affichées seules aux visiteurs non connectés.

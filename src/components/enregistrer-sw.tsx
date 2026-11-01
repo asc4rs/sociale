@@ -2,17 +2,11 @@
 
 import { useEffect } from "react";
 
-// Le service worker est désactivé : on le retire des navigateurs
-// et on vide son cache. Il n'est plus enregistré.
+// Enregistre le service worker, uniquement en production (sur Vercel).
 export function EnregistrerServiceWorker() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((regs) => regs.forEach((r) => r.unregister()));
-    }
-    if ("caches" in window) {
-      caches.keys().then((cles) => cles.forEach((c) => caches.delete(c)));
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 
