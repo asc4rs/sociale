@@ -1,6 +1,7 @@
 import { PublicationCarte } from "@/components/publication-carte";
 import type { CommentaireAffiche } from "@/components/section-commentaires";
 import type { OptionSondage } from "@/components/sondage";
+import { createClient } from "@/lib/supabase/server";
 
 type Auteur = { username: string; display_name: string; avatar_url: string | null };
 
@@ -37,6 +38,7 @@ type Props = {
   publications: Publication[];
   userId: string | null;
   favoris: string[];
+  // Conservé pour compatibilité : les épingles sont désormais lues directement.
   epingleId?: string | null;
 };
 
@@ -52,10 +54,35 @@ function formaterDate(iso: string) {
   });
 }
 
-export function ListePublications({ publications, userId, favoris, epingleId = null }: Props) {
+export async function ListePublications({ publications, userId, favoris }: Props) {
+  const supabase = await createClient();
+
+  const auteurs = [...new Set(publications.map((p) => p.author_id))];
+
+  let epingles: { post_id: string; user_id: string; position: number }[] = [];
+  if (auteurs.length > 0) {
+    const { data } = await supabase
+      .from("pinned_posts")
+      .select("post_id, user_id, position")
+      .in("user_id", auteurs)
+      .order("position", { ascending: true });
+    epingles = data ?? [];
+  }
+
+  const idsEpingles = new Set(epingles.map((e) => e.post_id));
+
+  // Sur un profil (un seul auteur), les épinglées passent en premier, dans leur ordre.
+  let liste = [...publications];
+  if (auteurs.length === 1) {
+    const ordre = new Map(epingles.map((e, i) => [e.post_id, i]));
+    liste = liste.sort(
+      (a, b) => (ordre.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (ordre.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }
+
   return (
     <ul className="mt-4 flex flex-col gap-4">
-      {publications.map((p) => {
+      {liste.map((p) => {
         const auteur = unObjet(p.profiles);
         const likes = p.likes ?? [];
         const reposts = p.reposts ?? [];
@@ -104,7 +131,7 @@ export function ListePublications({ publications, userId, favoris, epingleId = n
               nombreReposts={reposts.length}
               dejaRepost={reposts.some((r) => r.user_id === userId)}
               dejaFavori={favoris.includes(p.id)}
-              estEpinglee={epingleId === p.id}
+              estEpinglee={idsEpingles.has(p.id)}
               vues={p.views_count}
               kind={p.kind}
               options={options}

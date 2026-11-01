@@ -1,13 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Pin, PinOff, Repeat2 } from "lucide-react";
-import {
-  basculerEpingle,
-  basculerFavori,
-  basculerRepublication,
-} from "@/app/actions/interactions";
+import { basculerFavori, basculerRepublication } from "@/app/actions/interactions";
+import { basculerEpinglePublication } from "@/app/actions/epingles";
 
 type Resultat = { error?: string; ok?: boolean };
 
@@ -36,13 +33,18 @@ export function BoutonsPublication({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
 
   if (!connecte) return null;
 
   function lancer(action: () => Promise<Resultat>) {
+    setErreur(null);
     startTransition(async () => {
       const result = await action();
-      if (result.error) return;
+      if (result.error) {
+        setErreur(result.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -76,13 +78,19 @@ export function BoutonsPublication({
         <button
           type="button"
           disabled={pending}
-          onClick={() => lancer(() => basculerEpingle(postId, estEpinglee))}
+          onClick={() => lancer(() => basculerEpinglePublication(postId, !estEpinglee))}
           aria-label={estEpinglee ? "Désépingler" : "Épingler"}
-          title={estEpinglee ? "Désépingler" : "Épingler"}
+          title={estEpinglee ? "Désépingler" : "Épingler (3 maximum)"}
           className={`${boutonClasse} ${estEpinglee ? boutonActif : ""}`}
         >
           {estEpinglee ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
         </button>
+      )}
+
+      {erreur && (
+        <p role="alert" className="w-full text-sm text-red-600">
+          {erreur}
+        </p>
       )}
     </>
   );
