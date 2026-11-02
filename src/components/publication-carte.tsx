@@ -117,7 +117,7 @@ export function PublicationCarte({
         </p>
       )}
 
-      {kind === "texte" && <CarrouselMedias postId={id} />}
+      {kind === "texte" && <CarrouselMedias postId={id} estMienne={estMienne} />}
 
       <CitationApercu postId={id} />
 
